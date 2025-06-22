@@ -35,9 +35,17 @@ TOKEN = os.getenv("BOT_TOKEN")
 
 # ⏳ Комбинируем запуск: уведомление при рестарте + команды + главное меню
 async def full_startup(app):
+    print("▶ notify_restart запускается")
     await notify_restart(app)
+
+    print("▶ set_commands запускается")
     await set_commands(app)
+
+    print("▶ send_home_menu запускается")
     await send_home_menu(app)
+
+    print("✅ full_startup завершён")
+
 
 # 🔁 Создаём приложение
 app = ApplicationBuilder().token(TOKEN).post_init(full_startup).build()
