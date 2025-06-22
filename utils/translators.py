@@ -31,3 +31,6 @@ def load_translation_dict(weapon_key: str) -> dict:
     except Exception as e:
         logging.warning(f"❌ Ошибка загрузки перевода: {e}")
         return {}
+
+def get_type_label_by_key(types_dict: dict, key: str) -> str:
+    return types_dict.get(key, key)
