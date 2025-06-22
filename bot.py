@@ -45,7 +45,7 @@ async def full_startup(app):
     await send_home_menu(app)
 
 # 🔁 Создаём приложение
-app = ApplicationBuilder().token(TOKEN).build()
+app = ApplicationBuilder().token(TOKEN).post_init(lambda app: asyncio.create_task(full_startup(app))).build()
 
 # 1. Сначала добавляем команды
 app.add_handler(start_handler)
@@ -67,5 +67,4 @@ app.add_handler(stop_delete_callback)
 
 # ▶️ Запуск
 print("Бот запущен...")
-asyncio.run(full_startup(app))
 app.run_polling()
