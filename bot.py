@@ -14,7 +14,7 @@ from conversations.delete import delete_conv, stop_delete_callback
 
 from utils.logging_config import configure_logging
 from utils.restart_notifier import notify_restart
-from utils.command_setup import set_commands
+from utils.command_setup import set_commands, clear_all_scopes
 from telegram import ReplyKeyboardMarkup
 
 load_dotenv()
@@ -41,6 +41,7 @@ async def send_home_menu(app):
 async def full_startup(app):
     print("🔧 Устанавливаю команды...")
     await notify_restart(app)
+    await clear_all_scopes(app)
     await set_commands(app)
     await send_home_menu(app)
 
