@@ -1,6 +1,16 @@
-from telegram import BotCommand, BotCommandScopeDefault, BotCommandScopeChat
+from telegram import BotCommandScopeDefault, BotCommandScopeAllPrivateChats, BotCommandScopeAllGroupChats, BotCommandScopeChat
 import os
 import logging
+
+
+async def clear_all_scopes(app):
+    await app.bot.delete_my_commands(scope=BotCommandScopeDefault())
+    await app.bot.delete_my_commands(scope=BotCommandScopeAllPrivateChats())
+    await app.bot.delete_my_commands(scope=BotCommandScopeAllGroupChats())
+
+    for admin_id in os.getenv("ALLOWED_USERS", "").split(","):
+        if admin_id.strip().isdigit():
+            await app.bot.delete_my_commands(scope=BotCommandScopeChat(chat_id=int(admin_id)))
 
 public_commands = [
     BotCommand("home", "🏠 Главное меню"),
