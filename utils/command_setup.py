@@ -1,5 +1,6 @@
 from telegram import BotCommand, BotCommandScopeDefault, BotCommandScopeChat
 import os
+import logging
 
 public_commands = [
     BotCommand("help", "📩 Помощь и поддержка"),
@@ -20,11 +21,19 @@ admin_commands = [
 ]
 
 async def set_commands(app):
-    await app.bot.delete_my_commands(scope=BotCommandScopeDefault())
-    await app.bot.set_my_commands(public_commands, scope=BotCommandScopeDefault())
+    try:
+        await app.bot.delete_my_commands(scope=BotCommandScopeDefault())
+        await app.bot.set_my_commands(public_commands, scope=BotCommandScopeDefault())
+        logging.info("✅ Обновлены публичные команды")
+    except Exception as e:
+        logging.warning(f"❌ Ошибка при установке публичных команд: {e}")
 
     for admin_id in os.getenv("ALLOWED_USERS", "").split(","):
         if admin_id.strip().isdigit():
-            await app.bot.delete_my_commands(scope=BotCommandScopeChat(chat_id=int(admin_id)))
-            await app.bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=int(admin_id)))
-
+            try:
+                chat_id = int(admin_id.strip())
+                await app.bot.delete_my_commands(scope=BotCommandScopeChat(chat_id=chat_id))
+                await app.bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=chat_id))
+                logging.info(f"✅ Обновлены команды для админа {chat_id}")
+            except Exception as e:
+                logging.warning(f"❌ Ошибка при установке команд для {admin_id}: {e}")
