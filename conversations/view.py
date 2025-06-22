@@ -158,7 +158,7 @@ view_conv = ConversationHandler(
     entry_points=[MessageHandler(filters.Regex("📋 Сборки Warzone"), view_category_select)],
     states={
         VIEW_CATEGORY_SELECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, view_category_select)],
-        VIEW_WEAPON: [MessageHandler(filters.TEXT & ~filters.COMMAND, view_select_weapon)],
+        VIEW_WEAPON: [MessageHandler(filters.TEXT & ~filters.COMMAND, view_select_weapon)],  # ✅ сюда мы и должны попасть
         VIEW_SET_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, view_set_count)],
         VIEW_DISPLAY: [
             MessageHandler(filters.Regex("5|8"), view_display_builds),
@@ -169,5 +169,6 @@ view_conv = ConversationHandler(
     },
     fallbacks=[],
 )
+
 
 __all__ = ["view_conv"]
