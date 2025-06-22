@@ -1,3 +1,4 @@
+
 from telegram.ext import ApplicationBuilder
 from dotenv import load_dotenv
 import os
@@ -48,3 +49,4 @@ app.add_handler(home_button)
 
 # ▶️ Запуск бота
 app.run_polling()
+
