@@ -31,11 +31,9 @@ async def view_category_select(update: Update, context: ContextTypes.DEFAULT_TYP
             key_to_label = {i["key"]: i["label"] for i in load_weapon_types()}
             context.user_data['label_to_key'] = {v: k for k, v in key_to_label.items()}
             buttons = [[key_to_label.get(t, t)] for t in type_keys]
-            return await update.message.reply_text("Выберите тип оружия:", reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True))
+            await update.message.reply_text("Выберите тип оружия:", reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True))
+            return VIEW_WEAPON  # 👈 ОБЯЗАТЕЛЬНО!
 
-    buttons = [[f"{label} ({counts[key]})"] for key, label in raw_categories.items()]
-    await update.message.reply_text("Выберите категорию:", reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True))
-    return VIEW_CATEGORY_SELECT
 
 
 async def view_select_weapon(update: Update, context: ContextTypes.DEFAULT_TYPE):
