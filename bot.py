@@ -1,4 +1,4 @@
-from telegram.ext import ApplicationBuilder
+from telegram.ext import ApplicationBuilderMore actions
 from dotenv import load_dotenv
 import os
 
@@ -14,38 +14,16 @@ from utils.logging_config import configure_logging
 from utils.restart_notifier import notify_restart
 from utils.command_setup import set_commands
 
-# ✅ добавим вызов меню
-from telegram import ReplyKeyboardMarkup
-
-async def send_home_menu(app):
-    menu = [["📋 Сборки Warzone"]]
-    markup = ReplyKeyboardMarkup(menu, resize_keyboard=True)
-    for admin_id in os.getenv("ALLOWED_USERS", "").split(","):
-        if admin_id.strip().isdigit():
-            await app.bot.send_message(
-                chat_id=int(admin_id),
-                text="✅ Бот перезапущен. Главное меню готово.",
-                reply_markup=markup
-            )
-
 load_dotenv()
 configure_logging()
 
 TOKEN = os.getenv("BOT_TOKEN")
 
-# ⏳ Комбинируем запуск: уведомление при рестарте + команды + главное меню
+# ⏳ Комбинируем запуск: уведомление при рестарте + главное меню
 async def full_startup(app):
-    print("▶ notify_restart запускается")
     await notify_restart(app)
-
-    print("▶ set_commands запускается")
     await set_commands(app)
-
-    print("▶ send_home_menu запускается")
-    await send_home_menu(app)
-
-    print("✅ full_startup завершён")
-
+    await home_cmd.on_startup(app)
 
 # 🔁 Создаём приложение
 app = ApplicationBuilder().token(TOKEN).post_init(full_startup).build()
