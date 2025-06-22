@@ -3,10 +3,10 @@ import os
 import logging
 
 public_commands = [
-    BotCommand("help", "📩 Помощь и поддержка"),
-    BotCommand("add", "➕ Добавить сборку"),
-    BotCommand("show_all", "📋 Все сборки"),
     BotCommand("home", "🏠 Главное меню"),
+    BotCommand("help", "📩 Помощь и поддержка"),
+    BotCommand("show_all", "📋 Все сборки"),
+    BotCommand("add", "➕ Добавить сборку"),
 ]
 
 admin_commands = [
