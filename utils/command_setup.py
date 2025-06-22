@@ -19,20 +19,29 @@ admin_commands = [
     BotCommand("stop_delete", "⛔ Остановить удаление"),
 ]
 
+
 async def set_commands(app):
+    logging.warning("⚙ Установка команд запускается...")
+    
+    # Публичные команды
     try:
         await app.bot.delete_my_commands(scope=BotCommandScopeDefault())
         await app.bot.set_my_commands(public_commands, scope=BotCommandScopeDefault())
-        logging.info("✅ Обновлены публичные команды")
+        logging.warning("✅ Установлены публичные команды")
     except Exception as e:
-        logging.warning(f"❌ Ошибка при установке публичных команд: {e}")
+        logging.error(f"❌ Ошибка установки публичных команд: {e}")
 
+    # Команды для админов
     for admin_id in os.getenv("ALLOWED_USERS", "").split(","):
         if admin_id.strip().isdigit():
             try:
                 chat_id = int(admin_id.strip())
                 await app.bot.delete_my_commands(scope=BotCommandScopeChat(chat_id=chat_id))
                 await app.bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=chat_id))
-                logging.info(f"✅ Обновлены команды для админа {chat_id}")
+                logging.warning(f"✅ Установлены команды для админа: {chat_id}")
             except Exception as e:
-                logging.warning(f"❌ Ошибка при установке команд для {admin_id}: {e}")
+                logging.error(f"❌ Ошибка установки команд для админа {admin_id}: {e}")
+        else:
+            logging.warning(f"⚠️ Пропущен невалидный chat_id: {admin_id}")
+
+    logging.warning("🎯 set_commands завершена.")
