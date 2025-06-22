@@ -20,11 +20,11 @@ admin_commands = [
 ]
 
 async def set_commands(app):
+    await app.bot.delete_my_commands(scope=BotCommandScopeDefault())
     await app.bot.set_my_commands(public_commands, scope=BotCommandScopeDefault())
 
     for admin_id in os.getenv("ALLOWED_USERS", "").split(","):
         if admin_id.strip().isdigit():
-            await app.bot.set_my_commands(
-                admin_commands,
-                scope=BotCommandScopeChat(chat_id=int(admin_id))
-            )
+            await app.bot.delete_my_commands(scope=BotCommandScopeChat(chat_id=int(admin_id)))
+            await app.bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=int(admin_id)))
+
