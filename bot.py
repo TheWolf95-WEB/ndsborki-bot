@@ -1,6 +1,8 @@
+
 from telegram.ext import ApplicationBuilder
 from dotenv import load_dotenv
 import os
+import asyncio
 
 from handlers.start import start_handler
 from handlers.help import help_handler
@@ -37,12 +39,13 @@ async def send_home_menu(app):
 
 # ⏳ Запуск при старте
 async def full_startup(app):
+    print("🔧 Устанавливаю команды...")
     await notify_restart(app)
     await set_commands(app)
     await send_home_menu(app)
 
 # 🔁 Создаём приложение
-app = ApplicationBuilder().token(TOKEN).post_init(full_startup).build()
+app = ApplicationBuilder().token(TOKEN).build()
 
 # 1. Сначала добавляем команды
 app.add_handler(start_handler)
@@ -64,4 +67,5 @@ app.add_handler(stop_delete_callback)
 
 # ▶️ Запуск
 print("Бот запущен...")
+asyncio.run(full_startup(app))
 app.run_polling()
