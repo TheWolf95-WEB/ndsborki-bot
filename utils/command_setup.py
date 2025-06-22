@@ -11,13 +11,12 @@ public_commands = [
 
 admin_commands = [
     BotCommand("restart", "🔁 Перезапустить бота"),
-    BotCommand("update", "♻ Обновить и сбросить"),
+    *public_commands,
     BotCommand("log", "🪵 Последние 30 строк логов"),
     BotCommand("status", "📊 Статистика и состояние"),
     BotCommand("check_files", "🗂 Проверка модулей"),
     BotCommand("delete", "❌ Удалить сборку"),
     BotCommand("stop_delete", "⛔ Остановить удаление"),
-    *public_commands,
 ]
 
 async def set_commands(app):
