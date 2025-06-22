@@ -42,6 +42,11 @@ async def view_select_weapon(update: Update, context: ContextTypes.DEFAULT_TYPE)
     selected_key = label_to_key.get(selected_label, selected_label)
     context.user_data['selected_type'] = selected_key
 
+    # 🔍 Логирование в консоль
+    print("🔎 Выбранный текст:", selected_label)
+    print("🧭 Сопоставление label_to_key:", label_to_key)
+    print("✅ Итоговый ключ типа:", selected_key)
+
     data = load_db()
     weapons = sorted(set(
         b['weapon_name'] for b in data
@@ -49,13 +54,18 @@ async def view_select_weapon(update: Update, context: ContextTypes.DEFAULT_TYPE)
     ))
 
     if not weapons:
-        await update.message.reply_text("Сборок по этому типу пока нет.")
+        msg = (
+            f"⚠️ Не удалось найти оружие для типа: <code>{selected_key}</code>\n\n"
+            f"Проверь, что в базе есть сборки с типом <code>{selected_key}</code> и категорией <code>{context.user_data.get('selected_category')}</code>."
+        )
+        await update.message.reply_text(msg, parse_mode="HTML")
         return ConversationHandler.END
 
     context.user_data['available_weapons'] = weapons
     buttons = [[w] for w in weapons]
     await update.message.reply_text("Выберите оружие:", reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True))
     return VIEW_SET_COUNT
+
 
 
 async def view_set_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
