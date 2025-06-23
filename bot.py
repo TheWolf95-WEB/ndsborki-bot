@@ -60,7 +60,7 @@ async def full_startup(app):
     # Сначала уведомление тем, кто сделал /restart
     await clear_all_scopes(app)
     await set_commands(app)
-
+    await asyncio.sleep(1)
     await notify_restart(app)
 
     # Затем только остальным админам — основное меню
