@@ -2,6 +2,7 @@ import os
 import json
 import logging
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
+from telegram import ReplyKeyboardRemove
 from telegram.ext import (
     CommandHandler, MessageHandler, CallbackQueryHandler, ConversationHandler, ContextTypes, filters
 )
@@ -63,6 +64,8 @@ async def get_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     labels = list(context.user_data['type_map'].values())
     buttons = [labels[i:i+2] for i in range(0, len(labels), 2)]
 
+    
+    await update.message.reply_text("⬇️ Загрузка доступных типов...", reply_markup=ReplyKeyboardRemove())
     await update.message.reply_text("Выберите тип оружия:", reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True))
     return TYPE_CHOICE
 
