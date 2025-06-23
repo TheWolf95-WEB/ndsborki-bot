@@ -7,6 +7,7 @@ async def notify_restart(app):
         with open("restart_message.txt", "r") as f:
             user_id = int(f.read().strip())
         try:
+            await asyncio.sleep(1) 
             menu = [["📋 Сборки Warzone"]]
             markup = ReplyKeyboardMarkup(menu, resize_keyboard=True)
             await app.bot.send_message(
