@@ -20,7 +20,8 @@ from utils.restart_notifier import notify_restart
 from utils.command_setup import set_commands, clear_all_scopes
 from telegram import ReplyKeyboardMarkup
 
-load_dotenv()
+load_dotenv(dotenv_path=".env")
+
 configure_logging()
 
 TOKEN = os.getenv("BOT_TOKEN")
