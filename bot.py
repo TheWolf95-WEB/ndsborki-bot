@@ -58,6 +58,9 @@ async def full_startup(app):
         print(f"❌ Ошибка при получении команд: {e}")
 
     # Сначала уведомление тем, кто сделал /restart
+    await clear_all_scopes(app)
+    await set_commands(app)
+
     await notify_restart(app)
 
     # Затем только остальным админам — основное меню
