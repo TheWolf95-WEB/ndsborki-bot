@@ -45,7 +45,6 @@ async def send_home_menu(app):
 async def full_startup(app):
     print("🔧 Устанавливаю команды...")
 
-    await notify_restart(app)
     await clear_all_scopes(app)
     await set_commands(app)
 
@@ -58,7 +57,12 @@ async def full_startup(app):
     except Exception as e:
         print(f"❌ Ошибка при получении команд: {e}")
 
+    # Сначала уведомление тем, кто сделал /restart
+    await notify_restart(app)
+
+    # Затем только остальным админам — основное меню
     await send_home_menu(app)
+
 
 
 # 🔁 Создаём приложение
