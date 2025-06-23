@@ -8,6 +8,9 @@ from handlers.start import start_handler
 from handlers.help import help_handler
 from handlers.home import home_cmd, home_button
 from handlers.admin import admin_handlers
+
+from handlers.test import test_handler
+
 from conversations.view import view_conv
 from conversations.add import add_conv
 from conversations.delete import delete_conv, stop_delete_callback
@@ -65,6 +68,8 @@ app.add_handler(start_handler)
 app.add_handler(help_handler)
 app.add_handler(home_cmd)
 
+app.add_handler(test_handler)
+
 # 2. Затем обработчики кнопок
 app.add_handler(home_button)
 
@@ -77,6 +82,7 @@ app.add_handler(view_conv)
 app.add_handler(add_conv)
 app.add_handler(delete_conv)
 app.add_handler(stop_delete_callback)
+
 
 # ▶️ Запуск
 print("Бот запущен...")
