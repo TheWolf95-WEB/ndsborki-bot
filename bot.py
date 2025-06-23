@@ -8,7 +8,6 @@ from handlers.start import start_handler
 from handlers.help import help_handler
 from handlers.home import home_cmd, home_button
 from handlers.admin import admin_handlers
-
 from handlers.test import test_handler
 
 from conversations.view import view_conv
@@ -21,25 +20,28 @@ from utils.command_setup import set_commands, clear_all_scopes
 from telegram import ReplyKeyboardMarkup
 
 load_dotenv(dotenv_path=".env")
-
 configure_logging()
 
 TOKEN = os.getenv("BOT_TOKEN")
 
-# ✅ Показ главного меню
-async def send_home_menu(app):
+# ✅ Главное меню
+async def send_home_menu(app, exclude_id=None):
     menu = [["📋 Сборки Warzone"]]
     markup = ReplyKeyboardMarkup(menu, resize_keyboard=True, one_time_keyboard=False)
     for admin_id in os.getenv("ALLOWED_USERS", "").split(","):
-        if admin_id.strip().isdigit():
-            try:
-                await app.bot.send_message(
-                    chat_id=int(admin_id),
-                    text="✅ Бот перезапущен. Главное меню готово.",
-                    reply_markup=markup
-                )
-            except Exception as e:
-                print(f"Ошибка отправки сообщения админу {admin_id}: {e}")
+        admin_id = admin_id.strip()
+        if not admin_id.isdigit():
+            continue
+        if exclude_id and int(admin_id) == exclude_id:
+            continue
+        try:
+            await app.bot.send_message(
+                chat_id=int(admin_id),
+                text="✅ Бот перезапущен. Главное меню готово.",
+                reply_markup=markup
+            )
+        except Exception as e:
+            print(f"Ошибка отправки сообщения админу {admin_id}: {e}")
 
 # ⏳ Запуск при старте
 async def full_startup(app):
@@ -47,53 +49,35 @@ async def full_startup(app):
 
     await clear_all_scopes(app)
     await set_commands(app)
+    await asyncio.sleep(1)  # даём Telegram время принять команды
 
-    # ✅ Проверка: выводим текущие команды Telegram
-    try:
-        cmds = await app.bot.get_my_commands()
-        print("📋 Текущие команды Telegram:")
-        for cmd in cmds:
-            print(f"   /{cmd.command} — {cmd.description}")
-    except Exception as e:
-        print(f"❌ Ошибка при получении команд: {e}")
-
-    # Сначала уведомление тем, кто сделал /restart
-    await clear_all_scopes(app)
-    await set_commands(app)
-    await asyncio.sleep(1)
-    await notify_restart(app)
-
-    # Затем только остальным админам — основное меню
-    await send_home_menu(app)
-
+    user_id = await notify_restart(app)  # вернёт ID, если был рестарт
+    await send_home_menu(app, exclude_id=user_id)
 
 
 # 🔁 Создаём приложение
 app = ApplicationBuilder().token(TOKEN).post_init(full_startup).build()
 
-
-# 1. Сначала добавляем команды
+# Команды
 app.add_handler(start_handler)
 app.add_handler(help_handler)
 app.add_handler(home_cmd)
 
-# 2. Затем обработчики кнопок
+# Кнопки
 app.add_handler(home_button)
 
-# 3. Потом админ-команды
+# Админ
 for h in admin_handlers:
     app.add_handler(h)
 
-# 4. В самом конце добавляем диалоги (conversations)
+# Диалоги
 app.add_handler(view_conv)
 app.add_handler(add_conv)
 app.add_handler(delete_conv)
 app.add_handler(stop_delete_callback)
 
-
+# Тест
 app.add_handler(test_handler)
 
-
-# ▶️ Запуск
 print("Бот запущен...")
 app.run_polling()
