@@ -30,9 +30,11 @@ async def add_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return WEAPON_NAME
 
 async def get_weapon_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("⚙️ get_weapon_name called")
     context.user_data['weapon'] = update.message.text
     await update.message.reply_text("Теперь введите Дистанцию оружия")
     return ROLE_INPUT
+
 
 async def get_weapon_role(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['role'] = update.message.text
