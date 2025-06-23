@@ -107,15 +107,21 @@ async def check_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     context.user_data.clear()
+
     await update.message.reply_text("🔄 Бот перезапускается...\n⏳ Пожалуйста, подождите пару секунд...")
 
+    # Кто запустил перезапуск — для логов
     with open("restarted_by.txt", "w") as f:
         f.write(f"{user.full_name} (ID: {user.id})")
 
+    # Кому отправить сообщение после рестарта
     with open("restart_message.txt", "w") as f:
         f.write(str(user.id))
 
+    # Завершаем процесс — systemd запустит снова
     os._exit(0)
+
+restart_handler = CommandHandler("restart", restart_bot)
 
 
 # 📦 Экспортируем как список
