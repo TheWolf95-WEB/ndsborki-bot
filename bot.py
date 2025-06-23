@@ -62,7 +62,8 @@ async def full_startup(app):
 
 
 # 🔁 Создаём приложение
-app = ApplicationBuilder().token(TOKEN).post_init(lambda app: asyncio.create_task(full_startup(app))).build()
+app = ApplicationBuilder().token(TOKEN).post_init(full_startup).build()
+
 
 # 1. Сначала добавляем команды
 app.add_handler(start_handler)
