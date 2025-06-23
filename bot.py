@@ -40,10 +40,22 @@ async def send_home_menu(app):
 # ⏳ Запуск при старте
 async def full_startup(app):
     print("🔧 Устанавливаю команды...")
+
     await notify_restart(app)
     await clear_all_scopes(app)
     await set_commands(app)
+
+    # ✅ Проверка: выводим текущие команды Telegram
+    try:
+        cmds = await app.bot.get_my_commands()
+        print("📋 Текущие команды Telegram:")
+        for cmd in cmds:
+            print(f"   /{cmd.command} — {cmd.description}")
+    except Exception as e:
+        print(f"❌ Ошибка при получении команд: {e}")
+
     await send_home_menu(app)
+
 
 # 🔁 Создаём приложение
 app = ApplicationBuilder().token(TOKEN).post_init(lambda app: asyncio.create_task(full_startup(app))).build()
