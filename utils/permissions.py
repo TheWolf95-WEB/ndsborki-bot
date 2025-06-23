@@ -1,5 +1,9 @@
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path=".env")
+
 ALLOWED_USERS = list(map(int, os.getenv("ALLOWED_USERS", "").split(",")))
 
 def admin_only(func):
