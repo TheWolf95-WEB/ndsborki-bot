@@ -1,4 +1,5 @@
 from telegram import BotCommandScopeDefault, BotCommandScopeAllPrivateChats, BotCommandScopeAllGroupChats, BotCommandScopeChat
+from telegram import BotCommand
 import os
 import logging
 
