@@ -56,3 +56,5 @@ async def set_commands(app):
             logging.warning(f"⚠️ Пропущен невалидный chat_id: {admin_id}")
 
     logging.warning("🎯 set_commands завершена.")
+
+print('✅ Команды успешно установлены')
