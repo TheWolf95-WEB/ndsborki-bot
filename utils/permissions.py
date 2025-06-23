@@ -1,10 +1,12 @@
 import os
-
 from dotenv import load_dotenv
 
+# Надёжно грузим .env
 load_dotenv(dotenv_path=".env")
 
-ALLOWED_USERS = list(map(int, os.getenv("ALLOWED_USERS", "").split(",")))
+# Получаем ALLOWED_USERS как список int, игнорируя пустые значения
+raw_users = os.getenv("ALLOWED_USERS", "")
+ALLOWED_USERS = [int(uid) for uid in raw_users.split(",") if uid.strip().isdigit()]
 
 def admin_only(func):
     async def wrapper(update, context):
