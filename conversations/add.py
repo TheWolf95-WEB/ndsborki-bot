@@ -4,6 +4,7 @@ import os
 import json
 import logging
 import pathlib
+import traceback
 from telegram import (
     Update,
     ReplyKeyboardMarkup,
@@ -263,21 +264,35 @@ async def confirm_build(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "author": update.effective_user.full_name
     }
 
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    data = []
-    if os.path.exists(DB_PATH):
-        with open(DB_PATH, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-    data.append(new_build)
-    with open(DB_PATH, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2)
+    try:
+        logging.info(f"[ADD] Saving build → {new_build}")
+        # создаём папку, если её нет
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        # читаем старый файл
+        if DB_PATH.exists():
+            data = json.loads(DB_PATH.read_text(encoding="utf-8"))
+        else:
+            data = []
+        data.append(new_build)
+        # записываем обратно
+        DB_PATH.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False),
+            encoding="utf-8"
+        )
+        logging.info("[ADD] Saved successfully to %s", DB_PATH)
+    except Exception as e:
+        logging.error("[ADD] Failed to save build: %s\n%s", e, traceback.format_exc())
+        await update.message.reply_text("❌ Внутренняя ошибка при сохранении.")
+        return ConversationHandler.END
 
     await update.message.reply_text(
         "✅ Сборка успешно добавлена! Что дальше?",
-        reply_markup=ReplyKeyboardMarkup([["➕ Добавить ещё одну сборку"], ["◀ Отмена"]], resize_keyboard=True, one_time_keyboard=False)
+        reply_markup=ReplyKeyboardMarkup(
+            [["➕ Добавить ещё одну сборку"], ["◀ Отмена"]],
+            resize_keyboard=True
+        )
     )
     return POST_CONFIRM
-
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("❌ Действие отменено.", reply_markup=ReplyKeyboardRemove())
