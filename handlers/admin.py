@@ -12,6 +12,10 @@ from utils.keyboards import get_main_menu
 DB_PATH = "database/builds.json"
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
+# Путь до вашего репозитория
+REPO_DIR = "/root/NDsborki"
+GIT_REMOTE = "origin"
+GIT_BRANCH = "main"
 
 @admin_only
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -107,18 +111,14 @@ async def check_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(msg_lines), parse_mode="HTML")
 
 
-REPO_DIR = "/root/NDsborki"   # путь до вашей копии репозитория
-GIT_REMOTE = "origin"
-GIT_BRANCH = "main"
-
 @admin_only
 async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     kb = get_main_menu(user.id)
 
-    # 1) Оповещаем о начале обновления
+    # 1) Сообщаем о начале обновления
     await update.message.reply_text(
-        "🔄 Обновляю код из репозитория GitHub…",
+        "🔄 Обновляю код из репозитория…",
         reply_markup=kb
     )
 
@@ -128,7 +128,7 @@ async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "git", "pull", GIT_REMOTE, GIT_BRANCH,
             cwd=REPO_DIR,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
         )
         out, err = await proc.communicate()
         out, err = out.decode().strip(), err.decode().strip()
@@ -152,13 +152,14 @@ async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=kb
         )
 
-    # 3) И, наконец, рестартим процесс — systemd поднимет бот с новым кодом
+    # 3) Сообщаем о перезапуске и выходим
     await update.message.reply_text(
         "🔄 Перезапускаю сервис с обновлённым кодом…",
         reply_markup=kb
     )
     os._exit(0)
 
+restart_handler = CommandHandler("restart", restart_bot)
 
 # 📦 Экспортируем как список
 admin_handlers = [
