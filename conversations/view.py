@@ -205,17 +205,27 @@ async def previous_build(update: Update, context: ContextTypes.DEFAULT_TYPE):
 view_conv = ConversationHandler(
     entry_points=[MessageHandler(filters.Regex("^📋 Сборки Warzone$"), view_start)],
     states={
-        VIEW_CATEGORY_SELECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, view_category_selected)],
-        VIEW_WEAPON:          [MessageHandler(filters.TEXT & ~filters.COMMAND, view_select_weapon)],
-        VIEW_SET_COUNT:       [MessageHandler(filters.TEXT & ~filters.COMMAND, view_display_builds)],
+        VIEW_CATEGORY_SELECT: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, view_category_selected)
+        ],
+        VIEW_WEAPON: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, view_select_weapon)
+        ],
+        VIEW_SET_COUNT: [
+            MessageHandler(filters.Regex(r"^(5|8) \(\d+\)$"), view_display_builds)
+        ],
         VIEW_DISPLAY: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, view_display_builds),
             MessageHandler(filters.Regex("^➡ Следующая$"), next_build),
             MessageHandler(filters.Regex("^⬅ Предыдущая$"), previous_build),
             MessageHandler(filters.Regex("^📋 Сборки Warzone$"), view_start),
         ],
     },
-    fallbacks=[CommandHandler("cancel", lambda u,c: u.message.reply_text("❌ Отменено.", reply_markup=ReplyKeyboardRemove()))]
+    fallbacks=[
+        CommandHandler("cancel", lambda u, c: u.message.reply_text(
+            "❌ Отменено.", reply_markup=ReplyKeyboardRemove()
+        ))
+    ]
 )
+
 
 __all__ = ["view_conv"]
