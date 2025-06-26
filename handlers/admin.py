@@ -17,6 +17,52 @@ REPO_DIR = "/root/NDsborki"
 GIT_REMOTE = "origin"
 GIT_BRANCH = "main"
 
+# Путь до вашего репозитория
+REPO_DIR = "/root/NDsborki"
+GIT_REMOTE = "origin"
+GIT_BRANCH = "main"
+
+# КОМАНДА РЕСТАРТ
+@admin_only
+async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    kb = get_main_menu(user.id)
+
+    # 1) Оповещаем о перезапуске бота
+    await update.message.reply_text(
+        "🔄 Перезапуск бота…",
+        reply_markup=kb
+    )
+
+    # 2) Пытаемся подтянуть актуальный код из Git
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "git", "pull", GIT_REMOTE, GIT_BRANCH,
+            cwd=REPO_DIR,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL
+        )
+        rc = await proc.wait()
+    except Exception:
+        await update.message.reply_text(
+            "❌ Ошибка при обновлении кода.",
+            reply_markup=kb
+        )
+        return
+
+    if rc != 0:
+        await update.message.reply_text(
+            "❌ Ошибка при обновлении кода.",
+            reply_markup=kb
+        )
+        return
+
+    # 3) Успешно обновили — завершаем процесс для перезапуска
+    os._exit(0)
+
+restart_handler = CommandHandler("restart", restart_bot)
+
+# КОМАНДА СТАТУС
 @admin_only
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Проверяем БД
@@ -134,45 +180,6 @@ async def check_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text("\n".join(msg_lines), parse_mode="HTML")
 
-
-@admin_only
-async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    kb = get_main_menu(user.id)
-
-    # 1) Оповещаем о перезапуске бота
-    await update.message.reply_text(
-        "🔄 Перезапуск бота…",
-        reply_markup=kb
-    )
-
-    # 2) Пытаемся подтянуть актуальный код из Git
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            "git", "pull", GIT_REMOTE, GIT_BRANCH,
-            cwd=REPO_DIR,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL
-        )
-        rc = await proc.wait()
-    except Exception:
-        await update.message.reply_text(
-            "❌ Ошибка при обновлении кода.",
-            reply_markup=kb
-        )
-        return
-
-    if rc != 0:
-        await update.message.reply_text(
-            "❌ Ошибка при обновлении кода.",
-            reply_markup=kb
-        )
-        return
-
-    # 3) Успешно обновили — завершаем процесс для перезапуска
-    os._exit(0)
-
-restart_handler = CommandHandler("restart", restart_bot)
 
 # 📦 Экспортируем как список
 admin_handlers = [
