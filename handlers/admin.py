@@ -135,12 +135,13 @@ async def check_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @admin_only
 async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    kb = get_main_menu(update.effective_user.id)
+    user_id = update.effective_user.id
+    kb = get_main_menu(user_id)
 
-    # Оповещение о рестарте
+    # 1) Оповещаем о рестарте
     await update.message.reply_text("🔄 Перезапуск бота…", reply_markup=kb)
 
-    # Git pull в текущей директории
+    # 2) Пытаемся подтянуть код из Git
     try:
         proc = await asyncio.create_subprocess_exec(
             "git", "pull", "origin", "main",
@@ -158,18 +159,22 @@ async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if rc != 0:
-        msg = err or out or "Неизвестная ошибка"
+        error_msg = err or out or "Неизвестная ошибка"
         await update.message.reply_text(
-            f"❌ Ошибка при обновлении кода:\n<pre>{msg}</pre>",
+            f"❌ Ошибка при обновлении кода:\n<pre>{error_msg}</pre>",
             parse_mode="HTML", reply_markup=kb
         )
         return
 
-    # Главное: выходим и даём systemd перезапустить процесс
+    # 3) Помечаем флагом, что нужно подтвердить в on_startup
+    with open("restart_message.txt", "w", encoding="utf-8") as f:
+        f.write(str(user_id))
+
+    # 4) Выходим — systemd автоматически перезапустит бот
     os._exit(0)
 
-
 restart_handler = CommandHandler("restart", restart_bot)
+
 
 
 # Экспорт всех админ-хэндлеров
