@@ -13,6 +13,7 @@ from telegram.ext import (
     ContextTypes,
 )
 from utils.db import load_weapon_types
+from utils.translators import load_translation_dict
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
 DB_PATH = os.path.join(ROOT, "database", "builds.json")
@@ -59,6 +60,8 @@ def make_page_keyboard(category: str, page: int, total: int) -> InlineKeyboardMa
 
 DIVIDER = "\n- - - - - - - - - - - - - - - - - - - - - - - -\n"
 
+from utils.translators import load_translation_dict
+
 def format_build(idx, build, get_type_label_by_key):
     name = build.get("weapon_name", "—")
     role = build.get("role", "-")
@@ -68,13 +71,19 @@ def format_build(idx, build, get_type_label_by_key):
     auth = build.get("author", "—")
 
     modules = build.get("modules", {})
-    module_lines = []
     mod_count = len(modules)
     mods_list = list(modules.items())
+
+    # Загрузка словаря переводов для типа оружия
+    translation_dict = load_translation_dict(type_key)
+
+    module_lines = []
     for i, (mod, val) in enumerate(mods_list):
         is_last = (i == mod_count - 1)
         prefix = "└" if is_last else "├"
-        module_lines.append(f"{prefix} {mod}: <b>{val}</b>")
+        # val — это английский вариант, надо перевести
+        val_ru = translation_dict.get(val, val)  # если нет перевода, оставим как есть
+        module_lines.append(f"{prefix} {mod}: <b>{val_ru}</b>")
 
     modules_text = "\n".join(module_lines) if module_lines else "Нет модулей"
 
@@ -86,6 +95,7 @@ def format_build(idx, build, get_type_label_by_key):
         f"{modules_text}\n\n"
         f"👤 <b>Автор:</b> {auth}"
     )
+
 
 async def show_all_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     builds = load_builds()
