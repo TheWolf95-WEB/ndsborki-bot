@@ -36,7 +36,7 @@ async def on_startup(app):
             kb = get_main_menu(user_id)
             await app.bot.send_message(
                 chat_id=user_id,
-                text="✅ Бот успешно перезапущен. Возвращаюсь в главное меню…",
+                text="✅ Бот успешно перезапущен.",
                 reply_markup=kb
             )
         except Exception:
