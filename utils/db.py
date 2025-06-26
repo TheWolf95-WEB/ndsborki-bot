@@ -1,8 +1,12 @@
 import os
 import json
 import logging
+import pathlib
 
-DB_PATH = "database/builds.json"
+HERE = pathlib.Path(__file__).resolve().parent
+ROOT = HERE.parent
+DB_PATH = ROOT / "database" / "builds.json"
+
 
 def load_db():
     if not os.path.exists(DB_PATH):
