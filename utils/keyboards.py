@@ -1,9 +1,19 @@
 from telegram import ReplyKeyboardMarkup
 
 def get_main_menu(user_id: int) -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup([['📋 Сборки Warzone']], resize_keyboard=True)
+    # Здесь вы можете добавить больше кнопок, если нужно
+    buttons = [["📋 Сборки Warzone"]]
+    return ReplyKeyboardMarkup(
+        buttons,
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
 
 def build_keyboard_with_main(buttons: list[list[str]]) -> ReplyKeyboardMarkup:
-    if not any("🏠 Главное меню" in row for row in buttons):
+    if not any("🏠 Главное меню" in cell for row in buttons for cell in row):
         buttons.append(["🏠 Главное меню"])
-    return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
+    return ReplyKeyboardMarkup(
+        buttons,
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
