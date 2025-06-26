@@ -140,47 +140,36 @@ async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     kb = get_main_menu(user.id)
 
-    # 1) Сообщаем о начале обновления
+    # 1) Оповещаем о перезапуске бота
     await update.message.reply_text(
-        "🔄 Обновляю код из репозитория…",
+        "🔄 Перезапуск бота…",
         reply_markup=kb
     )
 
-    # 2) Делаем git pull
+    # 2) Пытаемся подтянуть актуальный код из Git
     try:
         proc = await asyncio.create_subprocess_exec(
             "git", "pull", GIT_REMOTE, GIT_BRANCH,
             cwd=REPO_DIR,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL
         )
-        out, err = await proc.communicate()
-        out, err = out.decode().strip(), err.decode().strip()
-
-        if proc.returncode == 0:
-            await update.message.reply_text(
-                f"✅ Код обновлён:\n<pre>{out or 'Already up to date.'}</pre>",
-                parse_mode="HTML",
-                reply_markup=kb
-            )
-        else:
-            await update.message.reply_text(
-                f"❌ Ошибка при обновлении:\n<pre>stdout: {out}\nstderr: {err}</pre>",
-                parse_mode="HTML",
-                reply_markup=kb
-            )
-    except Exception as e:
-        logging.exception("Git pull failed")
+        rc = await proc.wait()
+    except Exception:
         await update.message.reply_text(
-            f"❌ Не удалось выполнить git pull: {e}",
+            "❌ Ошибка при обновлении кода.",
             reply_markup=kb
         )
+        return
 
-    # 3) Сообщаем о перезапуске и выходим
-    await update.message.reply_text(
-        "🔄 Перезапускаю сервис с обновлённым кодом…",
-        reply_markup=kb
-    )
+    if rc != 0:
+        await update.message.reply_text(
+            "❌ Ошибка при обновлении кода.",
+            reply_markup=kb
+        )
+        return
+
+    # 3) Успешно обновили — завершаем процесс для перезапуска
     os._exit(0)
 
 restart_handler = CommandHandler("restart", restart_bot)
