@@ -17,6 +17,7 @@ from conversations.add import add_conv
 from conversations.delete import delete_conv, stop_delete_callback
 from utils.logging_config import configure_logging
 from utils.command_setup import set_commands, clear_all_scopes
+from utils.keyboards import get_main_menu
 
 load_dotenv(dotenv_path=".env")
 configure_logging()
@@ -30,20 +31,19 @@ async def on_startup(app):
     await asyncio.sleep(1)
 
     # Прямо здесь обрабатываем рестарт
-    if os.path.exists("restart_message.txt"):
-        with open("restart_message.txt", "r") as f:
-            user_id = int(f.read().strip())
-        try:
-            menu = [["📋 Сборки Warzone"]]
-            markup = ReplyKeyboardMarkup(menu, resize_keyboard=True)
-            await app.bot.send_message(
-                chat_id=user_id,
-                text="✅ Бот успешно перезапущен. Возвращаюсь в главное меню...",
-                reply_markup=markup
-            )
-        except Exception as e:
-            print(f"❌ Не удалось отправить сообщение после рестарта: {e}")
-        os.remove("restart_message.txt")
+if os.path.exists("restart_message.txt"):
+    with open("restart_message.txt") as f:
+        user_id = int(f.read().strip())
+    try:
+        markup = get_main_menu(user_id)
+        await app.bot.send_message(
+            chat_id=user_id,
+            text="✅ Бот успешно перезапущен. Возвращаюсь в главное меню...",
+            reply_markup=markup
+        )
+    except Exception as e:
+        logging.error(f"Не удалось отправить сообщение после рестарта: {e}")
+    os.remove("restart_message.txt")
 
 app = ApplicationBuilder().token(TOKEN).post_init(on_startup).build()
 
