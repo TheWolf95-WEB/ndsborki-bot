@@ -231,20 +231,39 @@ async def confirm_build(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "image":       context.user_data['image'],
         "author":      update.effective_user.full_name
     }
+    
+   logging.info("[ADD] ➤ confirm_build triggered, new_build = %r", new_build)
+
     try:
-        logging.info(f"[ADD] Saving → {new}")
-        DB_PATH.parent.mkdir(exist_ok=True)
-        arr = json.loads(DB_PATH.read_text(encoding="utf-8")) if DB_PATH.exists() else []
-        arr.append(new)
-        DB_PATH.write_text(json.dumps(arr, indent=2, ensure_ascii=False), encoding="utf-8")
-        logging.info("[ADD] Saved to %s", DB_PATH)
-    except Exception:
-        logging.exception("[ADD] Save failed")
-        await update.message.reply_text("❌ Ошибка сохранения.")
+        # 1) Убедимся, что папка есть
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        logging.info("[ADD] DB_PATH = %s", DB_PATH)
+
+        # 2) Считаем, сколько в базе до
+        old_data = json.loads(DB_PATH.read_text(encoding="utf-8")) if DB_PATH.exists() else []
+        logging.info("[ADD] before save: %d records", len(old_data))
+
+        # 3) Добавляем и пишем
+        old_data.append(new_build)
+        DB_PATH.write_text(json.dumps(old_data, indent=2, ensure_ascii=False), encoding="utf-8")
+        logging.info("[ADD] write_text succeeded")
+
+        # 4) Перечитаем и проверим
+        new_data = json.loads(DB_PATH.read_text(encoding="utf-8"))
+        logging.info("[ADD] after save: %d records, last = %r", len(new_data), new_data[-1])
+
+    except Exception as e:
+        logging.exception("[ADD] ❌ saving failed")
+        await update.message.reply_text("❌ Внутренняя ошибка при сохранении.")
         return ConversationHandler.END
 
-    await update.message.reply_text("✅ Добавлено! Что дальше?",
-                                    reply_markup=ReplyKeyboardMarkup([["➕ Добавить ещё"], ["◀ Отмена"]], resize_keyboard=True))
+    await update.message.reply_text(
+        "✅ Сборка успешно добавлена! Что дальше?",
+        reply_markup=ReplyKeyboardMarkup(
+            [["➕ Добавить ещё одну сборку"], ["◀ Отмена"]],
+            resize_keyboard=True
+        )
+    )
     return POST_CONFIRM
 
 
