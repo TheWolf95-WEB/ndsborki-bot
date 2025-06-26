@@ -47,39 +47,35 @@ async def get_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Выберите режим:", reply_markup=ReplyKeyboardMarkup([["Warzone"]], resize_keyboard=True))
     return MODE_SELECT
 
+# Запрашивает тип оружия
 async def get_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['mode'] = update.message.text
+
+    # Загружаем weapon_types
     weapon_types = load_weapon_types()
     key_to_label = {item["key"]: item["label"] for item in weapon_types}
 
-    import json
+    # Загружаем сборки
     with open(DB_PATH, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
+    # Фильтруем по режиму и категории
     available_keys = sorted(set(
         b['type'] for b in data
         if b.get("mode", "").lower() == context.user_data['mode'].lower()
         and b.get("category") == context.user_data.get("category")
     ))
 
+    # Сохраняем соответствие key → label
     context.user_data['type_map'] = {key: key_to_label.get(key, key) for key in available_keys}
+
+    # Строим кнопки с label
     labels = list(context.user_data['type_map'].values())
     buttons = [labels[i:i+2] for i in range(0, len(labels), 2)]
 
-    
-    await update.message.reply_text("⬇️ Загрузка доступных типов...", reply_markup=ReplyKeyboardRemove())
     await update.message.reply_text("Выберите тип оружия:", reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True))
     return TYPE_CHOICE
 
-async def get_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    selected_label = update.message.text.strip()
-    weapon_types = load_weapon_types()
-    label_to_key = {item["label"]: item["key"] for item in weapon_types}
-    selected_key = label_to_key.get(selected_label)
-
-    if not selected_key:
-        await update.message.reply_text("❌ Тип оружия не распознан. Пожалуйста, выберите из предложенных кнопок.")
-        return TYPE_CHOICE
 
     context.user_data['type'] = selected_key
 
