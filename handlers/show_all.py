@@ -1,16 +1,19 @@
+# handlers/show_all.py
+
 import os
 import json
+import textwrap
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
-from utils.keyboards import get_main_menu
 
-# Путь до файла с базой сборок
+# Путь до базы
 ROOT = os.path.dirname(os.path.dirname(__file__))
 DB_PATH = os.path.join(ROOT, "database", "builds.json")
 
+COLUMN_WIDTH = 40  # Ширина колонки в символах
 
 async def show_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Попытка загрузить JSON
+    # Загружаем данные
     try:
         with open(DB_PATH, "r", encoding="utf-8") as f:
             builds = json.load(f)
@@ -25,33 +28,46 @@ async def show_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("ℹ️ В базе пока нет ни одной сборки.")
         return
 
-    # Собираем строки вида: • Название — Категория / Тип
-    lines = ["📦 <b>Все сохранённые сборки:</b>\n"]
+    # Форматируем каждую сборку в блок текста
+    entries = []
     for b in builds:
         name = b.get("weapon_name", "—")
         cat  = b.get("category", "—")
         typ  = b.get("type", "—")
-        lines.append(f"• <b>{name}</b> — {cat} / {typ}")
+        mod_count = len(b.get("modules", {}))
+        auth = b.get("author", "—")
 
-    # Объединяем в один текст
-    text = "\n".join(lines)
-    # Если длина не превышает лимит, отправляем сразу
-    if len(text) <= 4000:
-        await update.message.reply_text(text, parse_mode="HTML")
-        return
+        block = (
+            f"<b>{name}</b>\n"
+            f"{cat} | {typ} ({mod_count})\n"
+            f"Автор: {auth}"
+        )
+        # Заменяем потенциальные теги на безопасные
+        entries.append(block)
 
-    # Иначе разбиваем на чанки по ~4000 символов
-    chunk = []
-    size = 0
-    for line in lines:
-        if size + len(line) + 1 > 4000:
-            await update.message.reply_text("\n".join(chunk), parse_mode="HTML")
-            chunk = []
-            size = 0
-        chunk.append(line)
-        size += len(line) + 1
-    if chunk:
-        await update.message.reply_text("\n".join(chunk), parse_mode="HTML")
+    # Разбиваем на пары по 2
+    pairs = [entries[i:i+2] for i in range(0, len(entries), 2)]
+
+    # Собираем финальные строки с выравниванием
+    messages = []
+    for pair in pairs:
+        left = pair[0].split("\n")
+        right = pair[1].split("\n") if len(pair) == 2 else ["", "", ""]
+
+        # Для каждой из трёх строк в блоке формируем строку с двумя колонками
+        combined = []
+        for i in range(3):
+            l = left[i] if i < len(left) else ""
+            r = right[i] if i < len(right) else ""
+            # выравниваем по COLUMN_WIDTH
+            l_pad = l.ljust(COLUMN_WIDTH)
+            combined.append(f"{l_pad} {r}")
+
+        messages.append("<pre>" + "\n".join(combined) + "</pre>")
+
+    # Если слишком много, отправляем сообщениями
+    for msg in messages:
+        await update.message.reply_text(msg, parse_mode="HTML")
 
 
 show_all_handler = CommandHandler("show_all", show_all)
