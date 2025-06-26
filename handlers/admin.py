@@ -109,15 +109,22 @@ async def check_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @admin_only
 async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    kb = get_main_menu(update.effective_user.id)
+    user = update.effective_user
+    kb = get_main_menu(user.id)
+
+    # Сообщаем о перезапуске
     await update.message.reply_text(
         "🔄 Бот перезапускается…",
         reply_markup=kb
     )
-    # Завершаем процесс — systemd сам его поднимет заново
+
+    # Сохраняем ID для уведомления об успешном рестарте
+    with open("restart_message.txt", "w", encoding="utf-8") as f:
+        f.write(str(user.id))
+
+    # Завершаем процесс — systemd поднимет бот заново
     os._exit(0)
 
-restart_handler = CommandHandler("restart", restart_bot)
 
 # 📦 Экспортируем как список
 admin_handlers = [
