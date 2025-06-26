@@ -7,7 +7,13 @@ from telegram.ext import ApplicationBuilder
 from handlers.start import start_handler
 from handlers.help import help_handler
 from handlers.home import home_cmd, home_button
-from handlers.show_all import show_all_handler
+
+from handlers.show_all import (
+    show_all_handler,
+    showcat_callback,
+    backcat_callback
+)
+
 from handlers.test import test_handler
 from handlers.admin import admin_handlers
 from conversations.view import view_conv
@@ -63,7 +69,11 @@ app.add_handler(add_conv)
 app.add_handler(delete_conv)
 app.add_handler(stop_delete_callback)
 app.add_handler(test_handler)
+
+# Просмотр всех сборок Команда
 app.add_handler(show_all_handler)
+app.add_handler(showcat_callback)
+app.add_handler(backcat_callback)
 
 logging.info("Бот запущен…")
 app.run_polling()
