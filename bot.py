@@ -23,10 +23,11 @@ configure_logging()
 TOKEN = os.getenv("BOT_TOKEN")
 
 
-async def on_startup(app):
-    print("🔧 Устанавливаю команды…")
-    await clear_all_scopes(app)
-    await set_commands(app)
+ async def on_startup(app):
+     logging.info("Устанавливаю команды…")
+     await clear_all_scopes(app)
+     await set_commands(app)
+     await asyncio.sleep(1)
 
     # Если был рестарт — уведомляем пользователя
     if os.path.exists("restart_message.txt"):
