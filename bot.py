@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 import os
@@ -45,14 +44,15 @@ async def on_startup(app):
             logging.error(f"Не удалось отправить сообщение после рестарта: {e}")
         os.remove("restart_message.txt")
 
-app = (ApplicationBuilder()
-       .token(TOKEN)
-       .post_init(on_startup)
-       .build())
 
-# … дальше регистрация хэндлеров …
+app = (
+    ApplicationBuilder()
+    .token(TOKEN)
+    .post_init(on_startup)
+    .build()
+)
 
-
+# Регистрация хэндлеров
 app.add_handler(start_handler)
 app.add_handler(help_handler)
 app.add_handler(home_cmd)
