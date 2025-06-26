@@ -112,36 +112,37 @@ async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     main_kb = get_main_menu(user.id)
 
-    # Оповестим о запуске рестарта
+    # Оповестим пользователя о рестарте
     await update.message.reply_text(
         "🔄 Выполняю перезапуск сервиса…",
         reply_markup=main_kb
     )
 
-    # Асинхронный вызов systemctl restart
     try:
+        # полный путь к systemctl
         proc = await asyncio.create_subprocess_exec(
-            "systemctl", "restart", "ndsborki.service",
+            "/usr/bin/systemctl", "restart", "ndsborki.service",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
         out, err = await proc.communicate()
+        out, err = out.decode().strip(), err.decode().strip()
+
         if proc.returncode == 0:
             await update.message.reply_text(
                 "✅ Сервис успешно перезапущен.",
                 reply_markup=main_kb
             )
         else:
-            msg = (err or out).decode().strip()
             await update.message.reply_text(
-                f"❌ Ошибка при перезапуске:\n<code>{msg}</code>",
+                f"❌ Ошибка при перезапуске:\n<pre>stdout: {out}\nstderr: {err}</pre>",
                 parse_mode="HTML",
                 reply_markup=main_kb
             )
     except Exception as e:
-        logging.exception("Не удалось перезапустить сервис")
+        logging.exception("Не удалось вызвать systemctl")
         await update.message.reply_text(
-            f"❌ Не удалось вызвать systemctl: {e}",
+            f"❌ Внутренняя ошибка при рестарте: {e}",
             reply_markup=main_kb
         )
 
