@@ -3,6 +3,7 @@
 import os
 import json
 import logging
+import pathlib
 from telegram import (
     Update,
     ReplyKeyboardMarkup,
@@ -21,8 +22,10 @@ from telegram.ext import (
 from utils.permissions import admin_only
 from utils.db import load_weapon_types
 
-# Путь к файлу с готовыми сборками
-DB_PATH = "database/builds.json"
+HERE = pathlib.Path(__file__).resolve().parent   # conversations/
+ROOT = HERE.parent                               # проектная папка /root/NDsborki
+DB_PATH = ROOT / "database" / "builds.json"
+
 
 # Шаги диалога
 (
