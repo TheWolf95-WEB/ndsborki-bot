@@ -109,45 +109,15 @@ async def check_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @admin_only
 async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    main_kb = get_main_menu(user.id)
-
-    # Оповестим пользователя о рестарте
+    kb = get_main_menu(update.effective_user.id)
     await update.message.reply_text(
-        "🔄 Выполняю перезапуск сервиса…",
-        reply_markup=main_kb
+        "🔄 Бот перезапускается…",
+        reply_markup=kb
     )
-
-    try:
-        # полный путь к systemctl
-        proc = await asyncio.create_subprocess_exec(
-            "/usr/bin/systemctl", "restart", "ndsborki.service",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        out, err = await proc.communicate()
-        out, err = out.decode().strip(), err.decode().strip()
-
-        if proc.returncode == 0:
-            await update.message.reply_text(
-                "✅ Сервис успешно перезапущен.",
-                reply_markup=main_kb
-            )
-        else:
-            await update.message.reply_text(
-                f"❌ Ошибка при перезапуске:\n<pre>stdout: {out}\nstderr: {err}</pre>",
-                parse_mode="HTML",
-                reply_markup=main_kb
-            )
-    except Exception as e:
-        logging.exception("Не удалось вызвать systemctl")
-        await update.message.reply_text(
-            f"❌ Внутренняя ошибка при рестарте: {e}",
-            reply_markup=main_kb
-        )
+    # Завершаем процесс — systemd сам его поднимет заново
+    os._exit(0)
 
 restart_handler = CommandHandler("restart", restart_bot)
-
 
 # 📦 Экспортируем как список
 admin_handlers = [
