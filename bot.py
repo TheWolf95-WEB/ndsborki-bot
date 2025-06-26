@@ -30,12 +30,13 @@ async def on_startup(app):
     await set_commands(app)
     await asyncio.sleep(1)
 
-    # Прямо здесь обрабатываем рестарт
+    # Блок перезапуска должен быть в теле on_startup
     if os.path.exists("restart_message.txt"):
         with open("restart_message.txt") as f:
             user_id = int(f.read().strip())
         try:
             markup = get_main_menu(user_id)
+            # этот await тоже внутри on_startup!
             await app.bot.send_message(
                 chat_id=user_id,
                 text="✅ Бот успешно перезапущен. Возвращаюсь в главное меню...",
