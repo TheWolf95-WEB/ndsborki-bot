@@ -107,22 +107,56 @@ async def check_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(msg_lines), parse_mode="HTML")
 
 
+REPO_DIR = "/root/NDsborki"   # путь до вашей копии репозитория
+GIT_REMOTE = "origin"
+GIT_BRANCH = "main"
+
 @admin_only
 async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     kb = get_main_menu(user.id)
 
-    # Сообщаем о перезапуске
+    # 1) Оповещаем о начале обновления
     await update.message.reply_text(
-        "🔄 Бот перезапускается…",
+        "🔄 Обновляю код из репозитория GitHub…",
         reply_markup=kb
     )
 
-    # Сохраняем ID для уведомления об успешном рестарте
-    with open("restart_message.txt", "w", encoding="utf-8") as f:
-        f.write(str(user.id))
+    # 2) Делаем git pull
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "git", "pull", GIT_REMOTE, GIT_BRANCH,
+            cwd=REPO_DIR,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        out, err = await proc.communicate()
+        out, err = out.decode().strip(), err.decode().strip()
 
-    # Завершаем процесс — systemd поднимет бот заново
+        if proc.returncode == 0:
+            await update.message.reply_text(
+                f"✅ Код обновлён:\n<pre>{out or 'Already up to date.'}</pre>",
+                parse_mode="HTML",
+                reply_markup=kb
+            )
+        else:
+            await update.message.reply_text(
+                f"❌ Ошибка при обновлении:\n<pre>stdout: {out}\nstderr: {err}</pre>",
+                parse_mode="HTML",
+                reply_markup=kb
+            )
+    except Exception as e:
+        logging.exception("Git pull failed")
+        await update.message.reply_text(
+            f"❌ Не удалось выполнить git pull: {e}",
+            reply_markup=kb
+        )
+
+    # 3) И, наконец, рестартим процесс — systemd поднимет бот с новым кодом
+    await update.message.reply_text(
+        "🔄 Перезапускаю сервис с обновлённым кодом…",
+        reply_markup=kb
+    )
     os._exit(0)
 
 
