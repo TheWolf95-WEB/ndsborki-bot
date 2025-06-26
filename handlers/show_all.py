@@ -5,11 +5,10 @@ import json
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
 
-# Путь до файла сборок
+# Путь до корня проекта и файла сборок
 ROOT    = os.path.dirname(os.path.dirname(__file__))
 DB_PATH = os.path.join(ROOT, "database", "builds.json")
 
-@CommandHandler("show_all")
 async def show_all_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 1) Проверяем наличие файла и читаем
     if not os.path.exists(DB_PATH):
@@ -45,5 +44,4 @@ async def show_all_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = "\n".join(lines)
     await update.message.reply_text(text, parse_mode="HTML")
 
-# Регистрируйте в bot.py
-show_all_handler = show_all_command
+show_all_handler = CommandHandler("show_all", show_all_command)
