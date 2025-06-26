@@ -23,31 +23,34 @@ load_dotenv(dotenv_path=".env")
 configure_logging()
 TOKEN = os.getenv("BOT_TOKEN")
 
-async def on_startup(app):
-    print("🔧 Устанавливаю команды...")
 
+async def on_startup(app):
+    print("🔧 Устанавливаю команды…")
     await clear_all_scopes(app)
     await set_commands(app)
     await asyncio.sleep(1)
 
-    # Блок перезапуска должен быть в теле on_startup
+    # Блок перезапуска — обязательно внутри on_startup()
     if os.path.exists("restart_message.txt"):
         with open("restart_message.txt") as f:
             user_id = int(f.read().strip())
         try:
             markup = get_main_menu(user_id)
-            # этот await тоже внутри on_startup!
             await app.bot.send_message(
                 chat_id=user_id,
-                text="✅ Бот успешно перезапущен. Возвращаюсь в главное меню...",
+                text="✅ Бот успешно перезапущен. Возвращаюсь в главное меню…",
                 reply_markup=markup
             )
         except Exception as e:
             logging.error(f"Не удалось отправить сообщение после рестарта: {e}")
         os.remove("restart_message.txt")
 
+app = (ApplicationBuilder()
+       .token(TOKEN)
+       .post_init(on_startup)
+       .build())
 
-app = ApplicationBuilder().token(TOKEN).post_init(on_startup).build()
+# … дальше регистрация хэндлеров …
 
 
 app.add_handler(start_handler)
