@@ -77,10 +77,10 @@ def format_build(idx, build, get_type_label_by_key):
     modules_text = "\n".join(module_lines) if module_lines else "Нет модулей"
 
     return (
-        f"{idx}. <b>{name}</b>\n\n"
-        f"<u>Тип:</u> <b>{typ}</b>\n\n"
-        f"<u>Дистанция:</u> <b>{role}</b>\n\n"
-        f"  <u><b>Модули оружия ({cnt}):</b></u>\n\n"
+        f"{idx}.Оружие: <b>{name}</b>\n\n"
+        f"Тип:<b>{typ}</b>\n"
+        f"Дистанция:<b>{role}</b>\n"
+        f"<b>Модули оружия ({cnt}):</b>\n"
         f"{modules_text}\n\n"
         f"👤 <b>Автор:</b> {auth}"
     )
