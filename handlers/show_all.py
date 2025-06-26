@@ -57,7 +57,7 @@ def make_page_keyboard(category: str, page: int, total: int) -> InlineKeyboardMa
     # Каждая кнопка — на своей строке:
     return InlineKeyboardMarkup([[b] for b in kb])
 
-DIVIDER = "\n- - - - - - - - - - - - - - - - -\n"
+DIVIDER = "\n- - - - - - - - - - - - - - - - - - - - - - - -\n"
 
 def format_build(idx, build, get_type_label_by_key):
     name = build.get("weapon_name", "—")
