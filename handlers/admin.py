@@ -106,9 +106,11 @@ async def check_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @admin_only
 async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    context.user_data.clear()
-
-    await update.message.reply_text("🔄 Бот перезапускается...\n⏳ Пожалуйста, подождите пару секунд...")
+    main_kb = get_main_menu(user.id)
+    await update.message.reply_text(
+        "🔄 Бот перезапускается...\n⏳ Пожалуйста, подождите пару секунд...",
+        reply_markup=main_kb
+    )
 
     # Кто запустил перезапуск — для логов
     with open("restarted_by.txt", "w") as f:
