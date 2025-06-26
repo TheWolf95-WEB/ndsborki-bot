@@ -31,21 +31,23 @@ async def on_startup(app):
     await asyncio.sleep(1)
 
     # Прямо здесь обрабатываем рестарт
-if os.path.exists("restart_message.txt"):
-    with open("restart_message.txt") as f:
-        user_id = int(f.read().strip())
-    try:
-        markup = get_main_menu(user_id)
-        await app.bot.send_message(
-            chat_id=user_id,
-            text="✅ Бот успешно перезапущен. Возвращаюсь в главное меню...",
-            reply_markup=markup
-        )
-    except Exception as e:
-        logging.error(f"Не удалось отправить сообщение после рестарта: {e}")
-    os.remove("restart_message.txt")
+    if os.path.exists("restart_message.txt"):
+        with open("restart_message.txt") as f:
+            user_id = int(f.read().strip())
+        try:
+            markup = get_main_menu(user_id)
+            await app.bot.send_message(
+                chat_id=user_id,
+                text="✅ Бот успешно перезапущен. Возвращаюсь в главное меню...",
+                reply_markup=markup
+            )
+        except Exception as e:
+            logging.error(f"Не удалось отправить сообщение после рестарта: {e}")
+        os.remove("restart_message.txt")
+
 
 app = ApplicationBuilder().token(TOKEN).post_init(on_startup).build()
+
 
 app.add_handler(start_handler)
 app.add_handler(help_handler)
