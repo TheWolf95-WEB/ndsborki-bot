@@ -16,106 +16,69 @@ from telegram.ext import (
     ContextTypes,
 )
 
-# Путь к корню проекта и builds.json
+# Путь к проекту и builds.json
 ROOT     = os.path.dirname(os.path.dirname(__file__))
 DB_PATH  = os.path.join(ROOT, "database", "builds.json")
 PAGE_SIZE = 5
 
-# Эмодзи для категорий (ключи должны совпадать с полем "category")
-CATEGORY_EMOJI = {
-    "Мета": "📈",
-    "Новинки": "🆕",
-    "Топовая мета": "🔥",
-}
+# Категории с эмодзи
+CATEGORIES = [
+    ("Мета",        "📈"),
+    ("Новинки",     "🆕"),
+    ("Топовая мета","🔥"),
+]
 
 async def show_all_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Шаг 1: /show_all — инлайн-меню категорий."""
+    """/show_all → инлайн-меню категорий."""
+    # Загружаем сборки, чтобы подсчитать
     try:
         with open(DB_PATH, encoding="utf-8") as f:
             builds = json.load(f)
     except:
-        return await update.message.reply_text("ℹ️ База сборок пуста или файл не найден.")
+        builds = []
 
-    # Подсчёт сборок по категориям
+    # Считаем по категориям
     counts = {}
     for b in builds:
-        cat = b.get("category", "—")
-        counts[cat] = counts.get(cat, 0) + 1
+        counts[b.get("category","—")] = counts.get(b.get("category","—"), 0) + 1
 
-    # Кнопки категории (инлайн)
-    buttons = []
-    for cat, emoji in CATEGORY_EMOJI.items():
-        cnt = counts.get(cat, 0)
-        buttons.append(
-            InlineKeyboardButton(
-                f"{emoji} {cat} ({cnt})",
-                callback_data=f"CAT|{cat}|1"
-            )
-        )
-
-    await update.message.reply_text(
-        "📦 <b>Все сборки по категориям:</b>",
-        parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup([buttons])
+    text = (
+        "📦 <b>Все сборки по категориям</b>\n\n"
+        "Нажмите на нужную категорию:"
     )
 
+    # Строим инлайн-кнопки по одной в ряд
+    buttons = [
+        [InlineKeyboardButton(f"{emoji} {name} ({counts.get(name,0)})",
+                              callback_data=f"CAT|{name}|1")]
+        for name, emoji in CATEGORIES
+    ]
+    markup = InlineKeyboardMarkup(buttons)
+
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=markup)
+    context.user_data.pop("showall_state", None)
+
+
 async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Шаг 2: показываем страницу сборок выбранной категории."""
+    """Обработка выбора категории из инлайн-меню."""
     query = update.callback_query
     await query.answer()
 
-    # Распарсим data: CAT|<category>|<page>
+    # data = "CAT|<category>|<page>"
     _, category, page_str = query.data.split("|")
     page = int(page_str)
 
-    # Сохраняем состояние: текущая категория и страница
     context.user_data["showall_state"] = {"category": category, "page": page}
+    await _send_page(update, context)
 
-    # Загрузим и отфильтруем сборки
-    with open(DB_PATH, encoding="utf-8") as f:
-        all_builds = json.load(f)
-    builds = [b for b in all_builds if b.get("category") == category]
-
-    total = len(builds)
-    pages = (total + PAGE_SIZE - 1) // PAGE_SIZE
-    start = (page - 1) * PAGE_SIZE
-    chunk = builds[start:start + PAGE_SIZE]
-
-    # Загрузим лейблы типов из utils.db
-    from utils.db import load_weapon_types
-    type_map = {wt["key"]: wt["label"] for wt in load_weapon_types()}
-
-    # Собираем текст
-    lines = [f"📂 <b>Сборки «{category}» ({total}):</b>"]
-    for idx, b in enumerate(chunk, start=start + 1):
-        typ_label = type_map.get(b.get("type", ""), b.get("type", "—"))
-        lines.append(
-            f"\n<b>{idx}. {b.get('weapon_name','—')}</b>\n"
-            f"├ 📏 Дистанция: {b.get('role','-')}\n"
-            f"├ ⚙️ Тип: {typ_label}\n"
-            f"├ 🔩 Модулей: {len(b.get('modules', {}))}\n"
-            f"└ 👤 Автор: {b.get('author','—')}"
-        )
-
-    text = "\n".join(lines)
-
-    # Обычная клавиатура для навигации
-    nav = []
-    if page > 1:
-        nav.append("← Назад")
-    if page < pages:
-        nav.append("Вперёд →")
-    nav.append("🏠 Категории")
-    reply_kb = ReplyKeyboardMarkup([nav], resize_keyboard=True, one_time_keyboard=True)
-
-    await query.edit_message_text(text, parse_mode="HTML", reply_markup=reply_kb)
 
 async def navigation_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Шаг 3: обрабатываем ‘← Назад’, ‘Вперёд →’ и ‘🏠 Категории’."""
+    """← Назад / Вперёд → / 🏠 Категории обычной клавиатурой."""
     text = update.message.text
     state = context.user_data.get("showall_state")
-    # Если нет state — просто сбросим на категории
-    if not state or text == "🏠 Категории":
+
+    # если «🏠 Категории» или state отсутствует → заново /show_all
+    if text == "🏠 Категории" or not state:
         return await show_all_command(update, context)
 
     category = state["category"]
@@ -126,15 +89,75 @@ async def navigation_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     elif text == "Вперёд →":
         page += 1
     else:
-        return  # игнорируем прочие
+        return  # не наша кнопка
 
-    # эмулируем callback_data и переходим в category_callback
-    fake = update  # переиспользуем объект
+    context.user_data["showall_state"]["page"] = page
+
+    # эмулируем callback_query
+    fake = update
     fake.callback_query = update.message
     fake.callback_query.data = f"CAT|{category}|{page}"
-    return await category_callback(fake, context)
+    await category_callback(fake, context)
 
-# Экспортируем хэндлеры
-show_all_handler      = CommandHandler("show_all", show_all_command)
-showcat_callback      = CallbackQueryHandler(category_callback, pattern=r"^CAT\|")
-navigation_handler    = MessageHandler(filters.Regex(r"^(← Назад|Вперёд →|🏠 Категории)$"), navigation_handler)
+
+async def _send_page(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Выводит текст и обычную навигацию."""
+    state = context.user_data["showall_state"]
+    category = state["category"]
+    page     = state["page"]
+
+    # читаем сборки
+    try:
+        with open(DB_PATH, encoding="utf-8") as f:
+            all_builds = json.load(f)
+    except:
+        return await update.callback_query.edit_message_text("❌ Не удалось загрузить базы.")
+
+    builds = [b for b in all_builds if b.get("category") == category]
+    total = len(builds)
+    pages = (total + PAGE_SIZE - 1) // PAGE_SIZE
+
+    # корректируем page
+    page = max(1, min(page, pages))
+    start = (page - 1) * PAGE_SIZE
+    chunk = builds[start:start + PAGE_SIZE]
+
+    # текст
+    header = (
+        f"📂 <b>Сборки «{category}»</b>\n"
+        f"Стр. {page}/{pages} — всего {total}\n\n"
+    )
+    lines = [header]
+    for idx, b in enumerate(chunk, start + 1):
+        lines.append(
+            f"<b>{idx}. {b.get('weapon_name','—')}</b>\n"
+            f"├ 📏 Дистанция: {b.get('role','-')}\n"
+            f"├ ⚙️ Тип: {b.get('type','—')}\n"
+            f"├ 🔩 Модулей: {len(b.get('modules',{}))}\n"
+            f"└ 👤 Автор: {b.get('author','—')}\n"
+        )
+
+    text = "\n".join(lines).strip()
+
+    # строим обычную клавиатуру навигации
+    nav = []
+    if page > 1:       nav.append("← Назад")
+    if page < pages:   nav.append("Вперёд →")
+    nav.append("🏠 Категории")
+
+    reply_kb = ReplyKeyboardMarkup([nav], resize_keyboard=True, one_time_keyboard=True)
+
+    # обновляем сообщение (callback) или шлём новое (команда)
+    if update.callback_query:
+        await update.callback_query.edit_message_text(text, parse_mode="HTML", reply_markup=reply_kb)
+    else:
+        await update.message.reply_text(text, parse_mode="HTML", reply_markup=reply_kb)
+
+
+# Экспортируем
+show_all_handler   = CommandHandler("show_all", show_all_command)
+category_cb        = CallbackQueryHandler(category_callback, pattern=r"^CAT\|")
+navigation_handler = MessageHandler(
+    filters.Regex(r"^(← Назад|Вперёд →|🏠 Категории)$"),
+    navigation_handler
+)
