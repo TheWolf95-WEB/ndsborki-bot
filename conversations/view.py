@@ -219,7 +219,7 @@ view_conv = ConversationHandler(
     states={
         VIEW_CATEGORY_SELECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, view_category_selected)],
         VIEW_WEAPON:          [MessageHandler(filters.TEXT & ~filters.COMMAND, view_select_weapon)],
-        VIEW_SET_COUNT:       [MessageHandler(filters.TEXT & ~filters.COMMAND, view_select_weapon)],
+        VIEW_SET_COUNT:       [MessageHandler(filters.TEXT & ~filters.COMMAND, view_display_builds)],
         VIEW_DISPLAY: [
             MessageHandler(filters.Regex("^[58]"), view_display_builds),
             MessageHandler(filters.Regex("^➡ Следующая$"), next_build),
