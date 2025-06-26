@@ -10,8 +10,8 @@ from handlers.home import home_cmd, home_button
 
 from handlers.show_all import (
     show_all_handler,
-    showcat_callback,
-    navigation_handler
+    category_cb,
+    navigation_handler,
 )
 
 from handlers.test import test_handler
@@ -72,7 +72,7 @@ app.add_handler(test_handler)
 
 # Просмотр всех сборок Команда
 app.add_handler(show_all_handler)
-app.add_handler(showcat_callback)
+app.add_handler(category_cb)
 app.add_handler(navigation_handler)
 
 logging.info("Бот запущен…")
