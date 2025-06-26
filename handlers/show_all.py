@@ -43,7 +43,6 @@ def make_categories_keyboard(builds: list) -> InlineKeyboardMarkup:
     buttons = []
     for cat, emoji in CATEGORY_EMOJI.items():
         cnt = counts.get(cat, 0)
-        # каждая кнопка — отдельный список, так что будут друг под другом
         buttons.append([InlineKeyboardButton(f"{emoji} {cat} ({cnt})", callback_data=f"cat|{cat}|0")])
     return InlineKeyboardMarkup(buttons)
 
@@ -54,7 +53,6 @@ def make_page_keyboard(category: str, page: int, total: int) -> InlineKeyboardMa
     if (page+1)*PAGE_SIZE < total:
         kb.append(InlineKeyboardButton("След. ➡", callback_data=f"cat|{category}|{page+1}"))
     kb.append(InlineKeyboardButton("🏠 К категориям", callback_data="back|0|0"))
-    # Каждая кнопка — на своей строке:
     return InlineKeyboardMarkup([[b] for b in kb])
 
 async def show_all_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -80,7 +78,7 @@ async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if action == "back":
         total = len(builds)
         text = (
-            f"📦 <b>Все сборки</b>\n"
+            f"📦 <b>Все сборки</b>\n\n"
             f"Общее количество сборок в нашей БД: <b>{total}</b>\n\n"
             f"ℹ️ Нажмите на нужную категорию, чтобы посмотреть все сборки в ней:"
         )
@@ -107,18 +105,19 @@ async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cnt = len(b.get("modules", {}))
         auth = b.get("author", "—")
 
-        # модули
-        modules_lines = []
+        # Модули
         modules = b.get("modules", {})
-        for mod, val in modules.items():
-            modules_lines.append(f"   └ {mod}: <b>{val}</b>")
-        modules_text = "\n".join(modules_lines) if modules_lines else "   └ Нет модулей"
+        if modules:
+            modules_lines = [f"├ {mod}: <b>{val}</b>" for mod, val in modules.items()]
+            modules_text = "\n".join(modules_lines)
+        else:
+            modules_text = "├ Нет модулей"
 
         lines.append(
             f"<b>{idx}. {name}</b>\n"
-            f"├ 📏 Дистанция: {role}\n"
-            f"├ ⚙️ Тип: {typ}\n"
-            f"├ 🔩 Модулей: {cnt}\n"
+            f"\n"
+            f"Тип: {typ}   Дистанция: {role}\n"
+            f"   Модули ({cnt}):\n"
             f"{modules_text}\n"
             f"└ 👤 Автор: {auth}\n"
         )
