@@ -29,8 +29,9 @@ async def on_startup(app):
     await asyncio.sleep(1)
 
     # Если был рестарт — уведомляем пользователя
-    if os.path.exists("restart_message.txt"):
-        with open("restart_message.txt", encoding="utf-8") as f:
+    flag = "restart_message.txt"
+    if os.path.exists(flag):
+        with open(flag, encoding="utf-8") as f:
             user_id = int(f.read().strip())
         try:
             kb = get_main_menu(user_id)
@@ -42,7 +43,7 @@ async def on_startup(app):
         except Exception:
             logging.exception("Не удалось уведомить после рестарта")
         finally:
-            os.remove("restart_message.txt")
+            os.remove(flag)
 
 
 
