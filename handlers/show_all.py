@@ -2,72 +2,77 @@
 
 import os
 import json
-import textwrap
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
 
-# Путь до базы
+# Путь до вашей папки проекта и файла сборок
 ROOT = os.path.dirname(os.path.dirname(__file__))
 DB_PATH = os.path.join(ROOT, "database", "builds.json")
 
-COLUMN_WIDTH = 40  # Ширина колонки в символах
+# Эмодзи для категорий
+CATEGORY_EMOJI = {
+    "Топовая мета": "🔥",
+    "Мета":       "📈",
+    "Новинки":    "🆕"
+}
+# Фиксированная ширина колонки в символах
+COL_WIDTH = 38
 
 async def show_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Загружаем данные
+    # Загрузка JSON
     try:
-        with open(DB_PATH, "r", encoding="utf-8") as f:
+        with open(DB_PATH, encoding="utf-8") as f:
             builds = json.load(f)
     except FileNotFoundError:
-        await update.message.reply_text("❌ Файл сборок не найден.")
-        return
+        return await update.message.reply_text("❌ Файл сборок не найден.")
     except Exception as e:
-        await update.message.reply_text(f"❌ Ошибка при чтении файла сборок: {e}")
-        return
+        return await update.message.reply_text(f"❌ Ошибка при чтении сборок: {e}")
 
     if not builds:
-        await update.message.reply_text("ℹ️ В базе пока нет ни одной сборки.")
-        return
+        return await update.message.reply_text("ℹ️ В базе пока нет ни одной сборки.")
 
-    # Форматируем каждую сборку в блок текста
-    entries = []
+    # Формируем текстовые блоки по сборке
+    blocks = []
     for b in builds:
         name = b.get("weapon_name", "—")
         cat  = b.get("category", "—")
         typ  = b.get("type", "—")
-        mod_count = len(b.get("modules", {}))
+        cnt  = len(b.get("modules", {}))
         auth = b.get("author", "—")
 
+        emoji_cat = CATEGORY_EMOJI.get(cat, "")
+        # Собираем HTML-блок
         block = (
-            f"<b>{name}</b>\n"
-            f"{cat} | {typ} ({mod_count})\n"
-            f"Автор: {auth}"
+            f"<b>🔫 {name}</b>\n"
+            f"{emoji_cat} <i>{cat}</i> | <i>{typ}</i> | 🔩 <b>{cnt}</b>\n"
+            f"👤 {auth}"
         )
-        # Заменяем потенциальные теги на безопасные
-        entries.append(block)
+        blocks.append(block)
 
-    # Разбиваем на пары по 2
-    pairs = [entries[i:i+2] for i in range(0, len(entries), 2)]
+    # Разбиваем на пары (две колонки)
+    pairs = [blocks[i:i+2] for i in range(0, len(blocks), 2)]
 
-    # Собираем финальные строки с выравниванием
-    messages = []
-    for pair in pairs:
-        left = pair[0].split("\n")
-        right = pair[1].split("\n") if len(pair) == 2 else ["", "", ""]
+    # Для каждой пары строим выровненный <pre> блок
+    for left_right in pairs:
+        left = left_right[0].split("\n")
+        right = left_right[1].split("\n") if len(left_right) == 2 else ["", "", ""]
 
-        # Для каждой из трёх строк в блоке формируем строку с двумя колонками
-        combined = []
+        # Убедимся, что у обоих по три строки
+        while len(left) < 3:  left.append("")
+        while len(right) < 3: right.append("")
+
+        # Составляем по строкам
+        lines = []
         for i in range(3):
-            l = left[i] if i < len(left) else ""
-            r = right[i] if i < len(right) else ""
-            # выравниваем по COLUMN_WIDTH
-            l_pad = l.ljust(COLUMN_WIDTH)
-            combined.append(f"{l_pad} {r}")
+            l = left[i]
+            r = right[i]
+            # обрезаем/выравниваем левую колонку
+            if len(l) > COL_WIDTH:
+                l = l[:COL_WIDTH-3] + "..."
+            l = l.ljust(COL_WIDTH)
+            lines.append(f"{l}  {r}")
 
-        messages.append("<pre>" + "\n".join(combined) + "</pre>")
-
-    # Если слишком много, отправляем сообщениями
-    for msg in messages:
-        await update.message.reply_text(msg, parse_mode="HTML")
-
+        text = "<pre>" + "\n".join(lines) + "</pre>"
+        await update.message.reply_text(text, parse_mode="HTML")
 
 show_all_handler = CommandHandler("show_all", show_all)
