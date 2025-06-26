@@ -19,6 +19,7 @@ GIT_BRANCH = "main"
 
 @admin_only
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Проверяем БД
     if not os.path.exists(DB_PATH):
         await update.message.reply_text("❌ База данных отсутствует.")
         return
@@ -30,39 +31,62 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Ошибка при чтении БД: {e}")
         return
 
+    # Проверяем статус systemd
     try:
         proc = await asyncio.create_subprocess_exec(
-            "systemctl", "is-active", "ndsborki.service",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            "/usr/bin/systemctl", "is-active", "ndsborki.service",
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         out, err = await proc.communicate()
         service_status = (out or err).decode().strip()
     except Exception as e:
         service_status = f"⚠️ Ошибка при проверке systemd: {e}"
 
+    # Статистика по сборкам
     total = len(data)
-    formatted_time = datetime.fromtimestamp(
-        os.path.getmtime(DB_PATH)
-    ).strftime("%d.%m.%Y %H:%M")
-
     authors = Counter(b.get("author", "—") for b in data)
     categories = Counter(b.get("category", "—") for b in data)
 
+    # Информация о последнем коммите
+    last_commit_time = "—"
+    last_commit_files = []
+    try:
+        proc2 = await asyncio.create_subprocess_exec(
+            "git", "-C", REPO_DIR,
+            "log", "-1", "--format=%ci", "--name-only",
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
+        out2, err2 = await proc2.communicate()
+        text = (out2 or err2).decode().strip().splitlines()
+        if text:
+            last_commit_time = text[0]  # строка вида "2025-06-26 14:05:12 +0000"
+            last_commit_files = [f for f in text[1:] if f]
+    except Exception:
+        logging.exception("Не удалось получить данные о последнем коммите")
+
+    # Формируем сообщение
     msg = [
         f"🖥 <b>Состояние сервиса:</b> <code>{service_status}</code>",
         f"📦 <b>Всего сборок:</b> <code>{total}</code>",
-        f"📅 <b>Обновлено:</b> <code>{formatted_time}</code>",
+        "",
+        f"🕑 <b>Последний коммит:</b> <code>{last_commit_time}</code>"
+    ]
+    if last_commit_files:
+        msg += ["📁 <b>Файлы в коммите:</b>"] + [f"• <code>{fn}</code>" for fn in last_commit_files]
+
+    msg += [
         "",
         "👥 <b>Авторы:</b>"
-    ]
-    msg += [f"• <b>{name}</b> — <code>{count}</code>" for name, count in authors.most_common()]
+    ] + [f"• <b>{name}</b> — <code>{count}</code>" for name, count in authors.most_common()]
 
     if categories:
-        msg.append("\n📁 <b>Категории сборок:</b>")
-        msg += [f"• <b>{cat}</b> — <code>{count}</code>" for cat, count in categories.items()]
+        msg += [
+            "",
+            "📂 <b>Категории сборок:</b>"
+        ] + [f"• <b>{cat}</b> — <code>{count}</code>" for cat, count in categories.items()]
 
     await update.message.reply_text("\n".join(msg), parse_mode="HTML")
+
 
 
 @admin_only
