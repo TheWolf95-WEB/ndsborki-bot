@@ -35,7 +35,6 @@ async def view_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     return VIEW_CATEGORY_SELECT
 
-
 async def view_category_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     category = next((k for k, lbl in RAW_CATEGORIES.items() if lbl == text), None)
@@ -71,7 +70,6 @@ async def view_category_selected(update: Update, context: ContextTypes.DEFAULT_T
         reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True)
     )
     return VIEW_WEAPON
-
 
 async def view_select_weapon(update: Update, context: ContextTypes.DEFAULT_TYPE):
     label = update.message.text.strip()
@@ -120,7 +118,6 @@ async def view_select_weapon(update: Update, context: ContextTypes.DEFAULT_TYPE)
     )
     return VIEW_SET_COUNT
 
-
 async def view_display_builds(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     try:
@@ -144,7 +141,6 @@ async def view_display_builds(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data['current_index'] = 0
 
     return await send_build(update, context)
-
 
 async def send_build(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = context.user_data['current_index']
@@ -189,18 +185,15 @@ async def send_build(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     return VIEW_DISPLAY
 
-
 async def next_build(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data['current_index'] < len(context.user_data['viewed_builds']) - 1:
         context.user_data['current_index'] += 1
     return await send_build(update, context)
 
-
 async def previous_build(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data['current_index'] > 0:
         context.user_data['current_index'] -= 1
     return await send_build(update, context)
-
 
 view_conv = ConversationHandler(
     entry_points=[MessageHandler(filters.Regex("^📋 Сборки Warzone$"), view_start)],
@@ -211,8 +204,9 @@ view_conv = ConversationHandler(
         VIEW_WEAPON: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, view_select_weapon)
         ],
+        # Главная правка — тут!
         VIEW_SET_COUNT: [
-            MessageHandler(filters.Regex(r"^(5|8) \(\d+\)$"), view_display_builds)
+            MessageHandler(filters.Regex(r"^[58]"), view_display_builds)
         ],
         VIEW_DISPLAY: [
             MessageHandler(filters.Regex("^➡ Следующая$"), next_build),
@@ -226,6 +220,5 @@ view_conv = ConversationHandler(
         ))
     ]
 )
-
 
 __all__ = ["view_conv"]
