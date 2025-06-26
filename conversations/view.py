@@ -1,71 +1,96 @@
-from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import MessageHandler, ConversationHandler, ContextTypes, filters
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram.ext import (
+    ConversationHandler, MessageHandler, CommandHandler,
+    ContextTypes, filters
+)
 from utils.db import load_db, load_weapon_types
-from utils.translators import load_translation_dict, get_type_label_by_key
+from utils.permissions import admin_only
 
 VIEW_CATEGORY_SELECT, VIEW_WEAPON, VIEW_SET_COUNT, VIEW_DISPLAY = range(4)
 
+raw_categories = {
+    "Топовая мета": "🔥 Топовая мета",
+    "Мета":       "📈 Мета",
+    "Новинки":    "🆕 Новинки"
+}
 
-async def view_category_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    data = load_db()
-    raw_categories = {
-        "Топовая мета": "🔥 Топовая мета",
-        "Мета": "📈 Мета",
-        "Новинки": "🆕 Новинки"
-    }
+@admin_only
+async def view_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Шаг 1: показываем категории
+    buttons = [[label] for label in raw_categories.values()]
+    await update.message.reply_text(
+        "📁 Выберите категорию сборки:",
+        reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True, one_time_keyboard=False)
+    )
+    return VIEW_CATEGORY_SELECT
 
-    counts = {
-        cat: sum(1 for b in data if b.get("mode", "").lower() == "warzone" and b.get("category") == cat)
-        for cat in raw_categories
-    }
-
-    user_input = update.message.text.strip().split(" (")[0]
-    for key, label in raw_categories.items():
-        if user_input == label:
-            context.user_data['selected_category'] = key
-            type_keys = sorted(set(
-                b['type'] for b in data
-                if b.get("mode", "").lower() == "warzone" and b.get("category") == key
-            ))
-
-            key_to_label = {i["key"]: i["label"] for i in load_weapon_types()}
-            context.user_data['label_to_key'] = {v: k for k, v in key_to_label.items()}
-            buttons = [[key_to_label.get(t, t)] for t in type_keys]
-            await update.message.reply_text("Выберите тип оружия:", reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True))
-            return VIEW_WEAPON  # 👈 ОБЯЗАТЕЛЬНО!
-
-
-
-async def view_select_weapon(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    selected_label = update.message.text.strip()
-    label_to_key = context.user_data.get('label_to_key', {})
-    selected_key = label_to_key.get(selected_label, selected_label)
-    context.user_data['selected_type'] = selected_key
-
-    # 🔍 Логирование в консоль
-    print("🔎 Выбранный текст:", selected_label)
-    print("🧭 Сопоставление label_to_key:", label_to_key)
-    print("✅ Итоговый ключ типа:", selected_key)
-
-    data = load_db()
-    weapons = sorted(set(
-        b['weapon_name'] for b in data
-        if b['type'] == selected_key and b.get('category') == context.user_data.get('selected_category')
-    ))
-
-    if not weapons:
-        msg = (
-            f"⚠️ Не удалось найти оружие для типа: <code>{selected_key}</code>\n\n"
-            f"Проверь, что в базе есть сборки с типом <code>{selected_key}</code> и категорией <code>{context.user_data.get('selected_category')}</code>."
+async def view_category_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    # убираем эмоджи, возвращаем исходный ключ
+    key = next((k for k, lbl in raw_categories.items() if lbl == text), None)
+    if not key:
+        # не тот текст — просим выбрать ещё раз
+        buttons = [[lbl] for lbl in raw_categories.values()]
+        await update.message.reply_text(
+            "❌ Пожалуйста, выберите категорию кнопкой.",
+            reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True, one_time_keyboard=False)
         )
-        await update.message.reply_text(msg, parse_mode="HTML")
+        return VIEW_CATEGORY_SELECT
+
+    context.user_data['selected_category'] = key
+
+    # Шаг 2: строим список доступных типов из builds.json
+    data = load_db()
+    type_keys = sorted({
+        b['type']
+        for b in data
+        if b.get("mode","").lower() == "warzone"
+        and b.get("category") == key
+    })
+
+    if not type_keys:
+        await update.message.reply_text(
+            "⚠️ Для этой категории нет готовых сборок.",
+            reply_markup=ReplyKeyboardRemove()
+        )
         return ConversationHandler.END
 
-    context.user_data['available_weapons'] = weapons
-    buttons = [[w] for w in weapons]
-    await update.message.reply_text("Выберите оружие:", reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True))
-    return VIEW_SET_COUNT
+    # Подпись типов через types.json
+    key_to_label = {wt['key']: wt['label'] for wt in load_weapon_types()}
+    context.user_data['label_to_key'] = {lbl: k for k, lbl in key_to_label.items()}
 
+    buttons = [[key_to_label.get(t, t)] for t in type_keys]
+    await update.message.reply_text(
+        "➡ Выберите тип оружия:",
+        reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True, one_time_keyboard=False)
+    )
+    return VIEW_WEAPON
+
+async def view_select_weapon(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    label = update.message.text.strip()
+    key = context.user_data['label_to_key'].get(label)
+    if not key:
+        # неверная кнопка
+        buttons = [[lbl] for lbl in context.user_data['label_to_key'].keys()]
+        await update.message.reply_text(
+            "❌ Пожалуйста, выберите из списка.",
+            reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True, one_time_keyboard=False)
+        )
+        return VIEW_WEAPON
+
+    context.user_data['selected_type'] = key
+    data = load_db()
+    weaps = sorted({
+        b['weapon_name']
+        for b in data
+        if b['type']==key and b.get('category')==context.user_data['selected_category']
+    })
+    buttons = [[w] for w in weaps]
+    await update.message.reply_text(
+        "➡ Выберите оружие:",
+        reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True, one_time_keyboard=False)
+    )
+    return VIEW_SET_COUNT
 
 
 async def view_set_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -165,20 +190,18 @@ async def previous_build(update: Update, context: ContextTypes.DEFAULT_TYPE):
 from telegram.ext import MessageHandler, ConversationHandler
 
 view_conv = ConversationHandler(
-    entry_points=[MessageHandler(filters.Regex("📋 Сборки Warzone"), view_category_select)],
+    entry_points=[MessageHandler(filters.Regex("^📋 Сборки Warzone$"), view_start)],
     states={
-        VIEW_CATEGORY_SELECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, view_category_select)],
-        VIEW_WEAPON: [MessageHandler(filters.TEXT & ~filters.COMMAND, view_select_weapon)],  # ✅ сюда мы и должны попасть
-        VIEW_SET_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, view_set_count)],
+        VIEW_CATEGORY_SELECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, view_category_selected)],
+        VIEW_WEAPON:          [MessageHandler(filters.TEXT & ~filters.COMMAND, view_select_weapon)],
+        VIEW_SET_COUNT:       [MessageHandler(filters.TEXT & ~filters.COMMAND, view_set_count)],
         VIEW_DISPLAY: [
-            MessageHandler(filters.Regex("5|8"), view_display_builds),
-            MessageHandler(filters.Regex("➡ Следующая"), next_build),
-            MessageHandler(filters.Regex("⬅ Предыдущая"), previous_build),
-            MessageHandler(filters.Regex("📋 Сборки Warzone"), view_category_select),
-        ]
+            MessageHandler(filters.Regex("^[58]"), view_display_builds),
+            MessageHandler(filters.Regex("^➡ Следующая$"), next_build),
+            MessageHandler(filters.Regex("^⬅ Предыдущая$"), previous_build),
+            MessageHandler(filters.Regex("^📋 Сборки Warzone$"), view_start),
+        ],
     },
-    fallbacks=[],
+    fallbacks=[CommandHandler("cancel", lambda u,c: u.message.reply_text("❌ Отменено.", reply_markup=ReplyKeyboardRemove()))]
 )
 
-
-__all__ = ["view_conv"]
