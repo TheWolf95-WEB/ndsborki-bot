@@ -17,7 +17,6 @@ REPO_DIR = "/root/NDsborki"
 GIT_REMOTE = "origin"
 GIT_BRANCH = "main"
 
-# КОМАНДА РЕСТАРТ
 @admin_only
 async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -34,20 +33,26 @@ async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         proc = await asyncio.create_subprocess_exec(
             "git", "pull", GIT_REMOTE, GIT_BRANCH,
             cwd=REPO_DIR,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
         )
-        rc = await proc.wait()
-    except Exception:
+        out, err = await proc.communicate()
+        rc = proc.returncode
+        out, err = out.decode().strip(), err.decode().strip()
+    except Exception as e:
         await update.message.reply_text(
-            "❌ Ошибка при обновлении кода.",
+            f"❌ Ошибка при обновлении кода:\n<pre>{e}</pre>",
+            parse_mode="HTML",
             reply_markup=kb
         )
         return
 
     if rc != 0:
+        # Отправляем детали ошибки для диагностики
+        error_msg = err or out or "Неизвестная ошибка"
         await update.message.reply_text(
-            "❌ Ошибка при обновлении кода.",
+            f"❌ Ошибка при обновлении кода:\n<pre>{error_msg}</pre>",
+            parse_mode="HTML",
             reply_markup=kb
         )
         return
