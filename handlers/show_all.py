@@ -57,7 +57,7 @@ def make_page_keyboard(category: str, page: int, total: int) -> InlineKeyboardMa
     # Каждая кнопка — на своей строке:
     return InlineKeyboardMarkup([[b] for b in kb])
 
-DIVIDER = "────────────────────────────"
+DIVIDER = "\n- - - - - - - - - - - - - - - - -\n"
 
 def format_build(idx, build, get_type_label_by_key):
     name = build.get("weapon_name", "—")
@@ -134,6 +134,7 @@ async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         lines.append(format_build(idx, b, get_type_label_by_key))
         if i < len(chunk) - 1:
             lines.append(DIVIDER)
+
     
     kb = make_page_keyboard(category, page, total_in_cat)
     await query.edit_message_text(
