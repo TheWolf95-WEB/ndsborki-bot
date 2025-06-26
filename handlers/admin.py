@@ -16,23 +16,20 @@ ADMIN_ID = int(os.getenv("ADMIN_ID"))
 REPO_DIR = "/root/NDsborki"
 GIT_REMOTE = "origin"
 GIT_BRANCH = "main"
+BASE_DIR = pathlib.Path(__file__).resolve().parent.parent 
 
 @admin_only
 async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     kb = get_main_menu(user.id)
 
-    # 1) Оповещаем о перезапуске бота
-    await update.message.reply_text(
-        "🔄 Перезапуск бота…",
-        reply_markup=kb
-    )
+    # 1) Сообщаем о рестарте
+    await update.message.reply_text("🔄 Перезапуск бота…", reply_markup=kb)
 
-    # 2) Пытаемся подтянуть актуальный код из Git
+    # 2) Git pull в текущей рабочей директории (systemd уже CD в проект)
     try:
         proc = await asyncio.create_subprocess_exec(
-            "git", "pull", GIT_REMOTE, GIT_BRANCH,
-            cwd=REPO_DIR,
+            "git", "pull", "origin", "main",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
@@ -40,24 +37,17 @@ async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         rc = proc.returncode
         out, err = out.decode().strip(), err.decode().strip()
     except Exception as e:
-        await update.message.reply_text(
-            f"❌ Ошибка при обновлении кода:\n<pre>{e}</pre>",
-            parse_mode="HTML",
-            reply_markup=kb
-        )
+        await update.message.reply_text(f"❌ Ошибка при обновлении кода:\n<pre>{e}</pre>",
+                                        parse_mode="HTML", reply_markup=kb)
         return
 
     if rc != 0:
-        # Отправляем детали ошибки для диагностики
         error_msg = err or out or "Неизвестная ошибка"
-        await update.message.reply_text(
-            f"❌ Ошибка при обновлении кода:\n<pre>{error_msg}</pre>",
-            parse_mode="HTML",
-            reply_markup=kb
-        )
+        await update.message.reply_text(f"❌ Ошибка при обновлении кода:\n<pre>{error_msg}</pre>",
+                                        parse_mode="HTML", reply_markup=kb)
         return
 
-    # 3) Успешно обновили — завершаем процесс для перезапуска
+    # 3) Выходим — systemd автоматически перезапустит бот
     os._exit(0)
 
 restart_handler = CommandHandler("restart", restart_bot)
