@@ -29,6 +29,23 @@ async def on_startup(app):
     await set_commands(app)
     await asyncio.sleep(1)
 
+    # Если был рестарт — уведомляем пользователя
+    if os.path.exists("restart_message.txt"):
+        with open("restart_message.txt", encoding="utf-8") as f:
+            user_id = int(f.read().strip())
+        try:
+            kb = get_main_menu(user_id)
+            await app.bot.send_message(
+                chat_id=user_id,
+                text="✅ Бот успешно перезапущен.",
+                reply_markup=kb
+            )
+        except Exception:
+            logging.exception("Не удалось уведомить после рестарта")
+        finally:
+            os.remove("restart_message.txt")
+
+
 
 app = (
     ApplicationBuilder()
