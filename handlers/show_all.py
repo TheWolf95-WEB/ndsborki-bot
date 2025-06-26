@@ -43,6 +43,7 @@ def make_categories_keyboard(builds: list) -> InlineKeyboardMarkup:
     buttons = []
     for cat, emoji in CATEGORY_EMOJI.items():
         cnt = counts.get(cat, 0)
+        # каждая кнопка — отдельный список, так что будут друг под другом
         buttons.append([InlineKeyboardButton(f"{emoji} {cat} ({cnt})", callback_data=f"cat|{cat}|0")])
     return InlineKeyboardMarkup(buttons)
 
@@ -53,7 +54,36 @@ def make_page_keyboard(category: str, page: int, total: int) -> InlineKeyboardMa
     if (page+1)*PAGE_SIZE < total:
         kb.append(InlineKeyboardButton("След. ➡", callback_data=f"cat|{category}|{page+1}"))
     kb.append(InlineKeyboardButton("🏠 К категориям", callback_data="back|0|0"))
+    # Каждая кнопка — на своей строке:
     return InlineKeyboardMarkup([[b] for b in kb])
+
+def format_build(idx, build, get_type_label_by_key):
+    name = build.get("weapon_name", "—")
+    role = build.get("role", "-")
+    type_key = build.get("type", "—")
+    typ = get_type_label_by_key(type_key)
+    cnt = len(build.get("modules", {}))
+    auth = build.get("author", "—")
+
+    modules = build.get("modules", {})
+    module_lines = []
+    mod_count = len(modules)
+    mods_list = list(modules.items())
+    for i, (mod, val) in enumerate(mods_list):
+        is_last = (i == mod_count - 1)
+        prefix = "└" if is_last else "├"
+        module_lines.append(f"{prefix} <u>{mod}:</u> <b>{val}</b>")
+
+    modules_text = "\n".join(module_lines) if module_lines else "Нет модулей"
+
+    return (
+        f"{idx}. <b>{name}</b>\n\n"
+        f"<u>Тип:</u> <b>{typ}</b>\n\n"
+        f"<u>Дистанция:</u> <b>{role}</b>\n\n"
+        f"  <u><b>Модули оружия ({cnt}):</b></u>\n\n"
+        f"{modules_text}\n\n"
+        f"👤 <b>Автор:</b> {auth}"
+    )
 
 async def show_all_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     builds = load_builds()
@@ -80,7 +110,7 @@ async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = (
             f"📦 <b>Все сборки</b>\n\n"
             f"Общее количество сборок в нашей БД: <b>{total}</b>\n\n"
-            f"ℹ️ Нажмите на нужную категорию, чтобы посмотреть все сборки в ней:"
+            f"ℹ️ Нажмите на нужную категорию, чтобы посмотреть все сборки в ней:\n"
         )
         await query.edit_message_text(
             text,
@@ -98,33 +128,11 @@ async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     lines = [f"📂 <b>Сборки категории «{category}»</b> (<code>{total_in_cat}</code>)\n"]
     for idx, b in enumerate(chunk, start=page*PAGE_SIZE + 1):
-        name = b.get("weapon_name", "—")
-        role = b.get("role", "-")
-        type_key = b.get("type", "—")
-        typ = get_type_label_by_key(type_key)
-        cnt = len(b.get("modules", {}))
-        auth = b.get("author", "—")
-
-        # Модули
-        modules = b.get("modules", {})
-        if modules:
-            modules_lines = [f"├ {mod}: <b>{val}</b>" for mod, val in modules.items()]
-            modules_text = "\n".join(modules_lines)
-        else:
-            modules_text = "├ Нет модулей"
-
-        lines.append(
-            f"<b>{idx}. {name}</b>\n"
-            f"\n"
-            f"Тип: {typ}   Дистанция: {role}\n"
-            f"   Модули ({cnt}):\n"
-            f"{modules_text}\n"
-            f"└ 👤 Автор: {auth}\n"
-        )
+        lines.append(format_build(idx, b, get_type_label_by_key))
 
     kb = make_page_keyboard(category, page, total_in_cat)
     await query.edit_message_text(
-        "\n".join(lines),
+        "\n\n".join(lines),
         parse_mode="HTML",
         reply_markup=kb
     )
