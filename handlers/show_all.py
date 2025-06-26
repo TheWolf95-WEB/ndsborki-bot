@@ -9,70 +9,41 @@ from telegram.ext import CommandHandler, ContextTypes
 ROOT    = os.path.dirname(os.path.dirname(__file__))
 DB_PATH = os.path.join(ROOT, "database", "builds.json")
 
-# Эмодзи
-E_GIFT     = "📦"
-E_WEAPON   = "🔫"
-E_TYPE     = "⚙️"
-E_CATEGORY = "📁"
-E_MODULES  = "🔩"
-E_AUTHOR   = "👤"
+@CommandHandler("show_all")
+async def show_all_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # 1) Проверяем наличие файла и читаем
+    if not os.path.exists(DB_PATH):
+        return await update.message.reply_text("ℹ️ Список сборок пуст.")
 
-async def show_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # 1) Загрузка БД
     try:
-        with open(DB_PATH, encoding="utf-8") as f:
-            builds = json.load(f)
+        with open(DB_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
     except Exception as e:
-        return await update.message.reply_text(f"❌ Не удалось открыть builds.json: {e}")
+        return await update.message.reply_text(f"❌ Не удалось прочитать builds.json: {e}")
 
-    if not builds:
-        return await update.message.reply_text("ℹ️ В базе ещё нет сборок.")
+    if not data:
+        return await update.message.reply_text("ℹ️ Список сборок пуст.")
 
-    # 2) Заголовок
-    await update.message.reply_text(f"{E_GIFT} <b>Все сохранённые сборки:</b>\n", parse_mode="HTML")
+    # 2) Формируем строки
+    lines = ["📄 <b>Все сборки:</b>"]
+    for idx, b in enumerate(data, start=1):
+        name = b.get("weapon_name", "—")
+        role = b.get("role", "-")
+        typ  = b.get("type", "—")
+        cnt  = len(b.get("modules", {}))
+        auth = b.get("author", "—")
 
-    # 3) Разбиваем на пары по две сборки
-    pairs = [builds[i:i+2] for i in range(0, len(builds), 2)]
+        lines.append(
+            f"\n<b>{idx}. {name}</b>\n"
+            f"├ 📏 Дистанция: {role}\n"
+            f"├ ⚙️ Тип: {typ}\n"
+            f"├ 🔩 Модулей: {cnt}\n"
+            f"└ 👤 Автор: {auth}"
+        )
 
-    for pair in pairs:
-        parts = []
-        for b in pair:
-            # Собираем HTML блок одной сборки
-            name = b.get("weapon_name", "—")
-            typ  = b.get("type",        "—")
-            cat  = b.get("category",    "—")
-            cnt  = len(b.get("modules", {}))
-            auth = b.get("author",      "—")
+    # 3) Склеиваем и отправляем
+    text = "\n".join(lines)
+    await update.message.reply_text(text, parse_mode="HTML")
 
-            block = (
-                f"{E_WEAPON} <b>{name}</b>\n"
-                f"{E_TYPE} Тип: <i>{typ}</i>\n"
-                f"{E_CATEGORY} Категория: <i>{cat}</i>\n"
-                f"{E_MODULES} Модули: <b>{cnt}</b>\n"
-                f"{E_AUTHOR} {auth}"
-            )
-            parts.append(block)
-
-        # Если парная — выводим две колонки через табуляцию
-        if len(parts) == 2:
-            left, right = parts
-            # простейшая разбивка: соединяем по строкам
-            left_lines  = left.split("\n")
-            right_lines = right.split("\n")
-            # соберём максимум по 5 строк
-            rows = max(len(left_lines), len(right_lines))
-            combined = []
-            for i in range(rows):
-                L = left_lines[i]  if i < len(left_lines) else ""
-                R = right_lines[i] if i < len(right_lines) else ""
-                combined.append(f"{L:40}    {R}")
-            text = "\n".join(combined)
-            await update.message.reply_text(f"<pre>{text}</pre>", parse_mode="HTML")
-        else:
-            # Только одна колонка
-            await update.message.reply_text(parts[0], parse_mode="HTML")
-
-        # Разделитель между «строками» таблицы
-        await update.message.reply_text("─" * 40)
-
-show_all_handler = CommandHandler("show_all", show_all)
+# Регистрируйте в bot.py
+show_all_handler = show_all_command
