@@ -1,7 +1,7 @@
 import os
 import json
-import subprocess
 import logging
+import asyncio
 from collections import Counter
 from datetime import datetime
 from telegram import Update
@@ -27,13 +27,20 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        result = subprocess.run(["systemctl", "is-active", "ndsborki.service"], capture_output=True, text=True)
-        service_status = result.stdout.strip()
+        proc = await asyncio.create_subprocess_exec(
+            "systemctl", "is-active", "ndsborki.service",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        out, err = await proc.communicate()
+        service_status = (out or err).decode().strip()
     except Exception as e:
         service_status = f"⚠️ Ошибка при проверке systemd: {e}"
 
     total = len(data)
-    formatted_time = datetime.fromtimestamp(os.path.getmtime(DB_PATH)).strftime("%d.%m.%Y %H:%M")
+    formatted_time = datetime.fromtimestamp(
+        os.path.getmtime(DB_PATH)
+    ).strftime("%d.%m.%Y %H:%M")
 
     authors = Counter(b.get("author", "—") for b in data)
     categories = Counter(b.get("category", "—") for b in data)
@@ -57,15 +64,13 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @admin_only
 async def get_logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        result = subprocess.run(
-            ["journalctl", "-u", "ndsborki.service", "-n", "30", "--no-pager"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
+        proc = await asyncio.create_subprocess_exec(
+            "journalctl", "-u", "ndsborki.service", "-n", "30", "--no-pager",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
-        logs = result.stdout.strip() or result.stderr.strip()
-        if not logs:
-            logs = "⚠️ Логи пусты или недоступны."
+        out, err = await proc.communicate()
+        logs = (out or err).decode().strip() or "⚠️ Логи пусты или недоступны."
 
         await context.bot.send_message(
             chat_id=ADMIN_ID,
@@ -73,9 +78,9 @@ async def get_logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="HTML"
         )
         await update.message.reply_text("📤 Логи отправлены в админский канал.")
-    except Exception as e:
-        await update.message.reply_text("❌ Не удалось получить логи.")
+    except Exception:
         logging.exception("Ошибка при получении логов")
+        await update.message.reply_text("❌ Не удалось получить логи.")
 
 
 @admin_only
@@ -95,10 +100,9 @@ async def check_files(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg_lines = ["🔍 Проверка файлов в /database:"]
     for key, fname in file_map.items():
         path = f"database/{fname}"
-        if os.path.exists(path):
-            msg_lines.append(f"✅ {key}: <code>{fname}</code> — найден")
-        else:
-            msg_lines.append(f"❌ {key}: <code>{fname}</code> — отсутствует")
+        status = "найден" if os.path.exists(path) else "отсутствует"
+        icon = "✅" if status == "найден" else "❌"
+        msg_lines.append(f"{icon} {key}: <code>{fname}</code> — {status}")
 
     await update.message.reply_text("\n".join(msg_lines), parse_mode="HTML")
 
@@ -108,22 +112,38 @@ async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     main_kb = get_main_menu(user.id)
 
-    # Сообщаем о начале рестарта, сохраняя меню
+    # Оповестим о запуске рестарта
     await update.message.reply_text(
-        "🔄 Бот перезапускается...\n⏳ Пожалуйста, подождите пару секунд...",
+        "🔄 Выполняю перезапуск сервиса…",
         reply_markup=main_kb
     )
 
-    # Логируем, кто запустил рестарт
-    with open("restarted_by.txt", "w", encoding="utf-8") as f:
-        f.write(f"{user.full_name} (ID: {user.id})")
-
-    # Сохраняем ID для on_startup
-    with open("restart_message.txt", "w", encoding="utf-8") as f:
-        f.write(str(user.id))
-
-    # Завершаем процесс, systemd (или ваш скрипт) поднимет бот заново
-    os._exit(0)
+    # Асинхронный вызов systemctl restart
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "systemctl", "restart", "ndsborki.service",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        out, err = await proc.communicate()
+        if proc.returncode == 0:
+            await update.message.reply_text(
+                "✅ Сервис успешно перезапущен.",
+                reply_markup=main_kb
+            )
+        else:
+            msg = (err or out).decode().strip()
+            await update.message.reply_text(
+                f"❌ Ошибка при перезапуске:\n<code>{msg}</code>",
+                parse_mode="HTML",
+                reply_markup=main_kb
+            )
+    except Exception as e:
+        logging.exception("Не удалось перезапустить сервис")
+        await update.message.reply_text(
+            f"❌ Не удалось вызвать systemctl: {e}",
+            reply_markup=main_kb
+        )
 
 restart_handler = CommandHandler("restart", restart_bot)
 
