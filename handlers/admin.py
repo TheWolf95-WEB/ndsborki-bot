@@ -17,11 +17,6 @@ REPO_DIR = "/root/NDsborki"
 GIT_REMOTE = "origin"
 GIT_BRANCH = "main"
 
-# Путь до вашего репозитория
-REPO_DIR = "/root/NDsborki"
-GIT_REMOTE = "origin"
-GIT_BRANCH = "main"
-
 # КОМАНДА РЕСТАРТ
 @admin_only
 async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
