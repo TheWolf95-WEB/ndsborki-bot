@@ -1,5 +1,3 @@
-# conversations/view.py
-
 import os
 import json
 import logging
@@ -20,45 +18,37 @@ from utils.db import load_db, load_weapon_types
 from utils.translators import load_translation_dict, get_type_label_by_key
 from utils.permissions import admin_only
 
-# Константы состояний
 VIEW_CATEGORY_SELECT, VIEW_WEAPON, VIEW_SET_COUNT, VIEW_DISPLAY = range(4)
 
-# Категории с эмоджи
 RAW_CATEGORIES = {
     "Топовая мета": "🔥 Топовая мета",
     "Мета":       "📈 Мета",
     "Новинки":    "🆕 Новинки"
 }
 
-
 @admin_only
 async def view_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Шаг 1: предлагaем категорию."""
     buttons = [[lbl] for lbl in RAW_CATEGORIES.values()]
     await update.message.reply_text(
         "📁 Выберите категорию сборки:",
-        reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True, one_time_keyboard=False)
+        reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True)
     )
     return VIEW_CATEGORY_SELECT
 
 
 async def view_category_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Шаг 2: после категории — тип оружия."""
     text = update.message.text.strip()
-    # ищем ключ по выбранному эмоджи-лейблу
     category = next((k for k, lbl in RAW_CATEGORIES.items() if lbl == text), None)
     if not category:
-        # неверный ввод — показываем ещё раз
         buttons = [[lbl] for lbl in RAW_CATEGORIES.values()]
         await update.message.reply_text(
             "❌ Пожалуйста, выберите категорию кнопкой.",
-            reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True, one_time_keyboard=False)
+            reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True)
         )
         return VIEW_CATEGORY_SELECT
 
     context.user_data['selected_category'] = category
 
-    # Фильтруем записи по mode="warzone" и категории
     data = load_db()
     type_keys = sorted({
         b['type'] for b in data
@@ -72,65 +62,66 @@ async def view_category_selected(update: Update, context: ContextTypes.DEFAULT_T
         )
         return ConversationHandler.END
 
-    # Берём human-readable лейблы из types.json
     key_to_label = {wt['key']: wt['label'] for wt in load_weapon_types()}
     context.user_data['label_to_key'] = {lbl: k for k, lbl in key_to_label.items()}
 
     buttons = [[key_to_label.get(t, t)] for t in type_keys]
     await update.message.reply_text(
         "➡ Выберите тип оружия:",
-        reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True, one_time_keyboard=False)
+        reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True)
     )
     return VIEW_WEAPON
 
 
 async def view_select_weapon(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Шаг 3: выбор конкретного оружия."""
     label = update.message.text.strip()
-    # здесь label_to_key хранит mapping label->key типов, а для оружия мы должны ограничиться тем, что в базе
-    weapon_list = sorted({
-        b['weapon_name'] for b in load_db()
-        if b['type'] == context.user_data['label_to_key'].get(label)
-           and b.get('category') == context.user_data['selected_category']
-    })
-    if not weapon_list:
-        # вообще не должно случаться, но на всякий
-        await update.message.reply_text("⚠️ По этому типу нет оружия.")
-        return ConversationHandler.END
+    type_key = context.user_data['label_to_key'].get(label)
 
-    # проверяем, что текст совпадает с одним из названий
-    if label not in weapon_list:
+    if type_key:
+        context.user_data['selected_type'] = type_key
+        weapon_list = sorted({
+            b['weapon_name'] for b in load_db()
+            if b['type'] == type_key and b.get('category') == context.user_data['selected_category']
+        })
+
+        if not weapon_list:
+            await update.message.reply_text("⚠️ По этому типу нет оружия.")
+            return ConversationHandler.END
+
+        context.user_data['weapon_list'] = weapon_list
         buttons = [[w] for w in weapon_list]
         await update.message.reply_text(
-            "❌ Пожалуйста, выберите оружие кнопкой.",
-            reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True, one_time_keyboard=False)
+            "🔫 Выберите оружие:",
+            reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True)
         )
         return VIEW_WEAPON
 
-    context.user_data['selected_type'] = context.user_data['label_to_key'][label]
-    context.user_data['selected_weapon'] = label
+    weapon = label
+    if weapon not in context.user_data.get('weapon_list', []):
+        buttons = [[w] for w in context.user_data.get('weapon_list', [])]
+        await update.message.reply_text(
+            "❌ Пожалуйста, выберите оружие кнопкой.",
+            reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True)
+        )
+        return VIEW_WEAPON
 
-    # Подсчитываем сборки по 5 и 8 модулям
+    context.user_data['selected_weapon'] = weapon
+
     data = load_db()
     c5 = sum(1 for b in data
-             if b['weapon_name']==label
-                and b['type']==context.user_data['selected_type']
-                and len(b['modules'])==5)
+             if b['weapon_name'] == weapon and b['type'] == context.user_data['selected_type'] and len(b['modules']) == 5)
     c8 = sum(1 for b in data
-             if b['weapon_name']==label
-                and b['type']==context.user_data['selected_type']
-                and len(b['modules'])==8)
+             if b['weapon_name'] == weapon and b['type'] == context.user_data['selected_type'] and len(b['modules']) == 8)
 
     buttons = [[f"5 ({c5})", f"8 ({c8})"]]
     await update.message.reply_text(
         "➡ Выберите количество модулей:",
-        reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True, one_time_keyboard=False)
+        reply_markup=ReplyKeyboardMarkup(buttons, resize_keyboard=True)
     )
     return VIEW_SET_COUNT
 
 
 async def view_display_builds(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Шаг 4/5: показываем саму сборку."""
     text = update.message.text.strip()
     try:
         count = int(text.split()[0])
@@ -138,7 +129,6 @@ async def view_display_builds(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text("⚠️ Нажмите на «5 (...)» или «8 (...)» кнопкой.")
         return VIEW_SET_COUNT
 
-    # фильтруем по выбранным параметрам
     filtered = [
         b for b in load_db()
         if b['type'] == context.user_data['selected_type']
@@ -153,7 +143,6 @@ async def view_display_builds(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data['viewed_builds'] = filtered
     context.user_data['current_index'] = 0
 
-    # и сразу печатаем
     return await send_build(update, context)
 
 
@@ -174,7 +163,6 @@ async def send_build(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✍ <b>Автор:</b> {build['author']}"
     )
 
-    # строим навигацию
     nav = []
     row = []
     if idx > 0: row.append("⬅ Предыдущая")
@@ -183,7 +171,7 @@ async def send_build(update: Update, context: ContextTypes.DEFAULT_TYPE):
     nav.append(row)
     nav.append(["📋 Сборки Warzone"])
 
-    markup = ReplyKeyboardMarkup(nav, resize_keyboard=True, one_time_keyboard=False)
+    markup = ReplyKeyboardMarkup(nav, resize_keyboard=True)
 
     if os.path.exists(build.get('image', '')):
         with open(build['image'], 'rb') as f:
