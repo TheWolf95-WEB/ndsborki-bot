@@ -13,7 +13,10 @@ def configure_logging():
     error_handler.setLevel(logging.WARNING)
 
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[info_handler, error_handler]
-    )
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler("logs/bot.log", encoding="utf-8"),
+        logging.StreamHandler()
+    ]
+)
