@@ -209,7 +209,7 @@ view_conv = ConversationHandler(
         VIEW_WEAPON:          [MessageHandler(filters.TEXT & ~filters.COMMAND, view_select_weapon)],
         VIEW_SET_COUNT:       [MessageHandler(filters.TEXT & ~filters.COMMAND, view_display_builds)],
         VIEW_DISPLAY: [
-            MessageHandler(filters.Regex("^[58]"), view_display_builds),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, view_display_builds),
             MessageHandler(filters.Regex("^➡ Следующая$"), next_build),
             MessageHandler(filters.Regex("^⬅ Предыдущая$"), previous_build),
             MessageHandler(filters.Regex("^📋 Сборки Warzone$"), view_start),
