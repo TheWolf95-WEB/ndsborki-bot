@@ -20,12 +20,10 @@ configure_logging()
 TOKEN = os.getenv("BOT_TOKEN")
 
 async def on_startup(app):
-    logging.info("Устанавливаю команды…")
     await clear_all_scopes(app)
     await set_commands(app)
     await asyncio.sleep(1)
 
-    # Если был рестарт — уведомляем пользователя
     flag = "restart_message.txt"
     if os.path.exists(flag):
         with open(flag, encoding="utf-8") as f:
@@ -41,6 +39,7 @@ async def on_startup(app):
             logging.exception("Не удалось уведомить после рестарта")
         finally:
             os.remove(flag)
+
 
 app = (
     ApplicationBuilder()
