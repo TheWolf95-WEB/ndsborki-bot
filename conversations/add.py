@@ -236,6 +236,8 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CONFIRMATION
 
 async def confirm_build(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("✅ confirm_build ВЫЗВАН")
+    print("🛠 Сохраняем в:", DB_PATH)
     # Готовим данные новой сборки из введённых пользователем
     new_build = {
         "weapon_name": context.user_data.get('weapon', ''),
