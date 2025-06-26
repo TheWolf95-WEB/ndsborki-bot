@@ -72,14 +72,14 @@ def format_build(idx, build, get_type_label_by_key):
     for i, (mod, val) in enumerate(mods_list):
         is_last = (i == mod_count - 1)
         prefix = "└" if is_last else "├"
-        module_lines.append(f"{prefix} <u>{mod}:</u> <b>{val}</b>")
+        module_lines.append(f"{prefix} {mod}: <b>{val}</b>")
 
     modules_text = "\n".join(module_lines) if module_lines else "Нет модулей"
 
     return (
         f"{idx}.Оружие: <b>{name}</b>\n\n"
         f"Тип:<b>{typ}</b>\n"
-        f"Дистанция:<b>{role}</b>\n"
+        f"Дистанция:<b>{role}</b>\n\n"
         f"<b>Модули оружия ({cnt}):</b>\n"
         f"{modules_text}\n\n"
         f"👤 <b>Автор:</b> {auth}"
