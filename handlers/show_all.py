@@ -79,9 +79,9 @@ def format_build(idx, build, get_type_label_by_key):
     modules_text = "\n".join(module_lines) if module_lines else "Нет модулей"
 
     return (
-        f"{idx}.Оружие: <b>{name}</b>\n\n"
-        f"Тип:<b>{typ}</b>\n"
-        f"Дистанция:<b>{role}</b>\n\n"
+        f"{idx}. Оружие: <b>{name}</b>\n\n"
+        f"Тип:<b> {typ}</b>\n"
+        f"Дистанция:<b> {role}</b>\n\n"
         f"<b>Модули оружия ({cnt}):</b>\n"
         f"{modules_text}\n\n"
         f"👤 <b>Автор:</b> {auth}"
@@ -129,8 +129,12 @@ async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chunk = filtered[page*PAGE_SIZE:(page+1)*PAGE_SIZE]
 
     lines = [f"📂 <b>Сборки категории «{category}»</b> (<code>{total_in_cat}</code>)\n"]
-    for idx, b in enumerate(chunk, start=page*PAGE_SIZE + 1):
+    for i, b in enumerate(chunk):
+        idx = page * PAGE_SIZE + i + 1
         lines.append(format_build(idx, b, get_type_label_by_key))
+        if i < len(chunk) - 1:
+            lines.append(DIVIDER)
+
 
     kb = make_page_keyboard(category, page, total_in_cat)
     await query.edit_message_text(
