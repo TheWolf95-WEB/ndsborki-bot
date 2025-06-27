@@ -14,7 +14,7 @@ from handlers.test import test_handler
 from handlers.admin import admin_handlers
 
 # ← Вот здесь поправили путь:
-from handlers.view import view_conv  
+from conversations.view import view_conv
 
 from conversations.add import add_conv
 from conversations.delete import delete_conv, stop_delete_callback
