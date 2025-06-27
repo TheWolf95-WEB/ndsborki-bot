@@ -1,17 +1,15 @@
 import json
 import logging
 import pathlib
-from functools import lru_cache
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent
 DB_PATH = ROOT / "database" / "builds.json"
 
-@lru_cache(maxsize=1)
 def load_db():
     """
-    Загружает файл builds.json единожды и кэширует результат.
-    При ошибке чтения возвращает пустой список.
+    Каждый раз читает файл builds.json «с нуля»,
+    возвращает актуальный список сборок.
     """
     if not DB_PATH.exists():
         return []
@@ -22,11 +20,10 @@ def load_db():
         logging.warning(f"❌ Ошибка загрузки БД: {e}")
         return []
 
-@lru_cache(maxsize=1)
 def load_weapon_types():
     """
-    Загружает файл types.json единожды и кэширует результат.
-    При ошибке чтения возвращает пустой список.
+    Каждый раз читает types.json,
+    возвращает список типов оружия.
     """
     types_path = ROOT / "database" / "types.json"
     if not types_path.exists():
@@ -38,7 +35,6 @@ def load_weapon_types():
         logging.warning(f"❌ Не удалось загрузить types.json: {e}")
         return []
 
-@lru_cache(maxsize=None)
 def get_type_label_by_key(type_key: str) -> str:
     """
     Возвращает ярлык типа оружия по его ключу.
