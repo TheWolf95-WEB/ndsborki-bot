@@ -51,7 +51,6 @@ async def on_category_selected(update: Update, context: ContextTypes.DEFAULT_TYP
     _, category = query.data.split("|", 1)
     context.user_data["selected_category"] = category
 
-    # Собираем доступные типы оружия
     data = load_db()
     type_keys = sorted({
         b["type"] for b in data
@@ -61,12 +60,12 @@ async def on_category_selected(update: Update, context: ContextTypes.DEFAULT_TYP
     if not type_keys:
         return await query.edit_message_text("⚠️ Нет сборок в этой категории.")
 
-    # Inline-кнопки: каждый тип + «Назад к категориям»
     key_to_label = {wt["key"]: wt["label"] for wt in load_weapon_types()}
     buttons = [
         [InlineKeyboardButton(key_to_label.get(k, k), callback_data=f"type|{k}")]
         for k in type_keys
     ]
+    # возвращаем на шаг КАТЕГОРИИ
     buttons.append([InlineKeyboardButton("⬅ Назад к категориям", callback_data="restart")])
 
     await query.edit_message_text(
@@ -84,7 +83,6 @@ async def on_type_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["selected_type"] = type_key
     category = context.user_data["selected_category"]
 
-    # Собираем список оружия по типу и категории
     weapon_list = sorted({
         b["weapon_name"] for b in load_db()
         if b["type"] == type_key and b.get("category") == category
@@ -92,11 +90,11 @@ async def on_type_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not weapon_list:
         return await query.edit_message_text("⚠️ По этому типу нет оружия.")
 
-    # Inline-кнопки: каждое оружие + «Назад к типам»
     buttons = [
         [InlineKeyboardButton(w, callback_data=f"weapon|{w}")]
         for w in weapon_list
     ]
+    # возвращаем на шаг ТИПЫ
     buttons.append([InlineKeyboardButton("⬅ Назад к типам", callback_data="back_type")])
 
     await query.edit_message_text(
@@ -119,28 +117,22 @@ async def on_weapon_selected(update: Update, context: ContextTypes.DEFAULT_TYPE)
     type_key = context.user_data["selected_type"]
     data = load_db()
 
-    # Считаем количество сборок по модулям
-    c5 = sum(
-        1 for b in data
-        if b["weapon_name"] == weapon
-           and b["type"] == type_key
-           and len(b["modules"]) == 5
-           and b.get("category") == category
-    )
-    c8 = sum(
-        1 for b in data
-        if b["weapon_name"] == weapon
-           and b["type"] == type_key
-           and len(b["modules"]) == 8
-           and b.get("category") == category
-    )
+    c5 = sum(1 for b in data
+             if b["weapon_name"] == weapon
+                and b["type"] == type_key
+                and len(b["modules"]) == 5
+                and b.get("category") == category)
+    c8 = sum(1 for b in data
+             if b["weapon_name"] == weapon
+                and b["type"] == type_key
+                and len(b["modules"]) == 8
+                and b.get("category") == category)
 
-    # Inline-кнопки для выбора модуля
     buttons = [[
-        InlineKeyboardButton(f"5 модулей ({c5})", callback_data=f"view|5|0"),
-        InlineKeyboardButton(f"8 модулей ({c8})", callback_data=f"view|8|0"),
+        InlineKeyboardButton(f"5 модулей ({c5})", callback_data="view|5|0"),
+        InlineKeyboardButton(f"8 модулей ({c8})", callback_data="view|8|0"),
     ]]
-    # Добавим «Назад к оружию»
+    # возвращаем на шаг ОРУЖИЕ
     buttons.append([InlineKeyboardButton("⬅ Назад к оружию", callback_data="back_weapon")])
 
     await query.edit_message_text(
@@ -156,20 +148,17 @@ async def on_weapon_selected(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def on_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Обработка выбора количества модулей и навигации.
-    callback_data = "view|<count>|<index>"
+    Вывод сборки и навигация «Пред / След».
     """
     query = update.callback_query
     await query.answer()
     _, count_str, idx_str = query.data.split("|")
-    count = int(count_str)
-    idx = int(idx_str)
+    count, idx = int(count_str), int(idx_str)
 
     category = context.user_data["selected_category"]
     type_key = context.user_data["selected_type"]
     weapon = context.user_data["selected_weapon"]
 
-    # Фильтруем сборки
     filtered = [
         b for b in load_db()
         if b["type"] == type_key
@@ -180,18 +169,13 @@ async def on_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not filtered:
         return await query.edit_message_text("⚠️ Сборок с таким количеством нет.")
 
-    # Корректируем индекс
     idx %= len(filtered)
     context.user_data["viewed_builds"] = filtered
-    context.user_data["current_count"] = count
     context.user_data["current_index"] = idx
 
     build = filtered[idx]
-    translation = load_translation_dict(type_key)
-    modules = "\n".join(
-        f"├ {k}: {translation.get(v, v)}"
-        for k, v in build["modules"].items()
-    )
+    tr = load_translation_dict(type_key)
+    modules = "\n".join(f"├ {k}: {tr.get(v, v)}" for k, v in build["modules"].items())
     caption = (
         f"📌 <b>Оружие:</b> {build['weapon_name']}\n"
         f"🎯 <b>Роль:</b> {build.get('role','-')}\n"
@@ -200,26 +184,27 @@ async def on_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"✍ <b>Автор:</b> {build['author']}"
     )
 
-    # Навигационные кнопки
-    prev_idx = (idx - 1) % len(filtered)
-    next_idx = (idx + 1) % len(filtered)
-    nav = []
+    # Первая строка: Предыдущая и Следующая
+    nav1 = []
     if len(filtered) > 1:
-        nav.append(
-            InlineKeyboardButton("⬅ Предыдущая", callback_data=f"view|{count}|{prev_idx}")
-        )
-        nav.append(
+        prev_idx = (idx - 1) % len(filtered)
+        next_idx = (idx + 1) % len(filtered)
+        nav1 = [
+            InlineKeyboardButton("⬅ Предыдущая", callback_data=f"view|{count}|{prev_idx}"),
             InlineKeyboardButton("Следующая ➡", callback_data=f"view|{count}|{next_idx}")
-        )
-    # Кнопки возврата
-    nav.append(InlineKeyboardButton("⬅ Назад к модулям", callback_data="back_count"))
-    nav.append(InlineKeyboardButton("📋 Категории", callback_data="restart"))
+        ]
 
-    markup = InlineKeyboardMarkup([nav])
+    # Вторая строка: Назад к выбору модулей и Категории
+    nav2 = [
+        InlineKeyboardButton("⬅ Назад", callback_data="back_count"),
+        InlineKeyboardButton("📋 Категории", callback_data="restart")
+    ]
 
-    img_path = build.get("image")
-    if img_path and pathlib.Path(img_path).exists():
-        media = InputMediaPhoto(open(img_path, "rb"), caption=caption, parse_mode="HTML")
+    markup = InlineKeyboardMarkup([nav1, nav2])
+
+    img = build.get("image")
+    if img and pathlib.Path(img).exists():
+        media = InputMediaPhoto(open(img, "rb"), caption=caption, parse_mode="HTML")
         await query.edit_message_media(media=media, reply_markup=markup)
     else:
         await query.edit_message_text(caption, reply_markup=markup, parse_mode="HTML")
@@ -227,29 +212,24 @@ async def on_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return VIEW_DISPLAY
 
 
-# --- вспомогательные «Назад» хэндлеры ---
-
+# Хэндлеры «Назад»
 async def on_back_to_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    # эмулируем повторный выбор категории
     query.data = f"cat|{context.user_data['selected_category']}"
     return await on_category_selected(update, context)
 
 async def on_back_to_weapon(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    # эмулируем повторный выбор типа
     query.data = f"type|{context.user_data['selected_type']}"
     return await on_type_selected(update, context)
 
 async def on_back_to_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    # эмулируем повторный выбор оружия
     query.data = f"weapon|{context.user_data['selected_weapon']}"
     return await on_weapon_selected(update, context)
-
 
 async def on_restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -275,10 +255,10 @@ view_conv = ConversationHandler(
             CallbackQueryHandler(on_back_to_type,    pattern="^back_type$"),
         ],
         VIEW_DISPLAY: [
-            CallbackQueryHandler(on_view_callback,     pattern="^view\\|"),
-            CallbackQueryHandler(on_back_to_weapon,    pattern="^back_weapon$"),
-            CallbackQueryHandler(on_back_to_count,     pattern="^back_count$"),
-            CallbackQueryHandler(on_restart,           pattern="^restart$"),
+            CallbackQueryHandler(on_view_callback,    pattern="^view\\|"),
+            CallbackQueryHandler(on_back_to_weapon,   pattern="^back_weapon$"),
+            CallbackQueryHandler(on_back_to_count,    pattern="^back_count$"),
+            CallbackQueryHandler(on_restart,          pattern="^restart$"),
         ],
     },
     fallbacks=[
